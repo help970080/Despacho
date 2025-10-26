@@ -304,6 +304,11 @@
       cursor: not-allowed;
     }
 
+    .btn-small {
+      padding: 6px 12px;
+      font-size: 0.85em;
+    }
+
     .stats-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -426,6 +431,7 @@
       padding: 15px;
       border-radius: 8px;
       margin-bottom: 10px;
+      position: relative;
     }
 
     .template-content h4 {
@@ -576,6 +582,25 @@
       margin-top: 15px;
     }
 
+    .variable-buttons {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+      padding: 12px;
+      background: white;
+      border-radius: 8px;
+      border: 2px dashed #e9ecef;
+    }
+
+    .variable-buttons label {
+      display: block;
+      width: 100%;
+      margin-bottom: 8px;
+      font-size: 0.9em;
+      color: #666;
+    }
+
     /* Scrollbar personalizado */
     ::-webkit-scrollbar {
       width: 10px;
@@ -609,6 +634,19 @@
       border-radius: 50%;
       border-top-color: white;
       animation: spin 0.8s ease-in-out infinite;
+    }
+
+    /* Ocultar elementos de admin */
+    .admin-only {
+      display: none !important;
+    }
+
+    .admin-only.show {
+      display: block !important;
+    }
+
+    button.admin-only.show {
+      display: inline-flex !important;
     }
   </style>
 </head>
@@ -670,7 +708,7 @@
         <button class="tab" onclick="showTab('clients')">👥 Clientes</button>
         <button class="tab" onclick="showTab('stats')">📈 Estadísticas</button>
         <button class="tab" onclick="showTab('logs')">📋 Logs</button>
-        <button class="tab admin-only" onclick="showTab('admin')" style="display: none;">⚙️ Admin</button>
+        <button class="tab admin-only" onclick="showTab('admin')">⚙️ Admin</button>
       </div>
 
       <!-- 📊 DASHBOARD -->
@@ -712,7 +750,8 @@
           <h2>📂 Cargar Clientes</h2>
           <div class="info-box">
             <strong>📋 Formato del CSV:</strong>
-            El archivo debe contener las columnas: Nombre, Telefono, Deuda, Compañia
+            El archivo debe contener las columnas: <strong>Nombre, Telefono, Deuda, Compañia</strong><br>
+            (Pueden variar en mayúsculas/minúsculas. El sistema las detectará automáticamente)
           </div>
           <input type="file" id="csvFile" accept=".csv" style="margin-bottom: 15px;">
           <button class="btn btn-primary" onclick="loadCSV()">
@@ -763,14 +802,47 @@
             <label>Compañía</label>
             <input type="text" id="templateCompany" placeholder="Ej: Mi Empresa S.A.">
           </div>
+          
           <div class="form-group">
             <label>Mensaje SMS</label>
-            <textarea id="templateSMS" placeholder="Usa variables: {Nombre}, {Telefono}, {Deuda}, {Compañia}"></textarea>
+            <div class="variable-buttons">
+              <label>👇 Haz clic para insertar variables:</label>
+              <button type="button" class="btn btn-primary btn-small" onclick="insertVariable('templateSMS', '{Nombre}')">
+                👤 {Nombre}
+              </button>
+              <button type="button" class="btn btn-primary btn-small" onclick="insertVariable('templateSMS', '{Telefono}')">
+                📞 {Telefono}
+              </button>
+              <button type="button" class="btn btn-primary btn-small" onclick="insertVariable('templateSMS', '{Deuda}')">
+                💰 {Deuda}
+              </button>
+              <button type="button" class="btn btn-primary btn-small" onclick="insertVariable('templateSMS', '{Compañia}')">
+                🏢 {Compañia}
+              </button>
+            </div>
+            <textarea id="templateSMS" placeholder="Escribe tu mensaje aquí..."></textarea>
           </div>
+          
           <div class="form-group">
             <label>Script de Llamada</label>
-            <textarea id="templateCall" placeholder="Usa variables: {Nombre}, {Telefono}, {Deuda}, {Compañia}"></textarea>
+            <div class="variable-buttons">
+              <label>👇 Haz clic para insertar variables:</label>
+              <button type="button" class="btn btn-primary btn-small" onclick="insertVariable('templateCall', '{Nombre}')">
+                👤 {Nombre}
+              </button>
+              <button type="button" class="btn btn-primary btn-small" onclick="insertVariable('templateCall', '{Telefono}')">
+                📞 {Telefono}
+              </button>
+              <button type="button" class="btn btn-primary btn-small" onclick="insertVariable('templateCall', '{Deuda}')">
+                💰 {Deuda}
+              </button>
+              <button type="button" class="btn btn-primary btn-small" onclick="insertVariable('templateCall', '{Compañia}')">
+                🏢 {Compañia}
+              </button>
+            </div>
+            <textarea id="templateCall" placeholder="Escribe el script de llamada aquí..."></textarea>
           </div>
+          
           <button class="btn btn-primary" onclick="createTemplate()">
             ✅ Guardar Plantilla
           </button>
@@ -891,10 +963,10 @@
               🔄 Limpiar Filtros
             </button>
             <button class="btn btn-success" onclick="exportToExcel()">
-              📊 Exportar a Excel
+              📊 Exportar Todos a Excel
             </button>
             <button class="btn btn-danger" onclick="exportFilteredToExcel()">
-              📥 Exportar Filtrados
+              📥 Exportar Filtrados a Excel
             </button>
           </div>
 
@@ -996,7 +1068,7 @@
       </div>
 
       <!-- ⚙️ ADMIN -->
-      <div class="tab-content admin-only" id="tab-admin" style="display: none;">
+      <div class="tab-content admin-only" id="tab-admin">
         <h2 style="color: #667eea; margin-bottom: 20px;">⚙️ Panel de Administración</h2>
 
         <div class="section">
@@ -1098,9 +1170,17 @@
       document.getElementById('userRole').textContent = currentUser.role === 'admin' ? '👑 Admin' : '👤 Usuario';
       document.getElementById('userCredits').textContent = currentUser.credits;
 
-      // Mostrar tab de admin si es admin
+      // CRÍTICO: Mostrar elementos de admin SOLO si es admin
       if (currentUser.role === 'admin') {
-        document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'block');
+        document.querySelectorAll('.admin-only').forEach(el => {
+          el.classList.add('show');
+        });
+        loadUsers();
+      } else {
+        // Asegurar que los elementos admin están ocultos
+        document.querySelectorAll('.admin-only').forEach(el => {
+          el.classList.remove('show');
+        });
       }
 
       // Cargar datos iniciales
@@ -1108,10 +1188,6 @@
       loadStats();
       loadLogs();
       loadAllClients();
-      
-      if (currentUser.role === 'admin') {
-        loadUsers();
-      }
     }
 
     function logout() {
@@ -1119,6 +1195,12 @@
       currentUser = null;
       loadedClients = [];
       allClients = [];
+      
+      // Ocultar todos los elementos admin
+      document.querySelectorAll('.admin-only').forEach(el => {
+        el.classList.remove('show');
+      });
+      
       document.getElementById('loginScreen').style.display = 'flex';
       document.getElementById('mainScreen').style.display = 'none';
       document.getElementById('loginUsername').value = '';
@@ -1158,6 +1240,20 @@
           document.getElementById('dashboardLogs').innerHTML = logs;
         });
       }
+    }
+
+    // ===================================
+    // 🔧 FUNCIÓN PARA INSERTAR VARIABLES
+    // ===================================
+    function insertVariable(textareaId, variable) {
+      const textarea = document.getElementById(textareaId);
+      const startPos = textarea.selectionStart;
+      const endPos = textarea.selectionEnd;
+      const text = textarea.value;
+      
+      textarea.value = text.substring(0, startPos) + variable + text.substring(endPos);
+      textarea.focus();
+      textarea.selectionStart = textarea.selectionEnd = startPos + variable.length;
     }
 
     // ===================================
@@ -1285,23 +1381,56 @@
           return;
         }
 
-        const headers = lines[0].split(',').map(h => h.trim());
+        // Obtener encabezados y limpiarlos
+        const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+        
+        // Buscar índices de las columnas (sin importar mayúsculas/minúsculas/tildes)
+        const nombreIdx = headers.findIndex(h => h.includes('nombre'));
+        const telefonoIdx = headers.findIndex(h => h.includes('telefono') || h.includes('teléfono'));
+        const deudaIdx = headers.findIndex(h => h.includes('deuda'));
+        const companiaIdx = headers.findIndex(h => h.includes('compania') || h.includes('compañia') || h.includes('empresa'));
+
+        if (nombreIdx === -1 || telefonoIdx === -1) {
+          alert('❌ El CSV debe contener al menos las columnas "Nombre" y "Telefono"');
+          return;
+        }
+
         loadedClients = [];
+        let errores = 0;
 
         for (let i = 1; i < lines.length; i++) {
           const values = lines[i].split(',').map(v => v.trim());
-          if (values.length >= 4) {
-            loadedClients.push({
-              Nombre: values[0],
-              Telefono: values[1],
-              Deuda: values[2],
-              Compañia: values[3]
-            });
+          
+          if (values.length > nombreIdx && values.length > telefonoIdx) {
+            const cliente = {
+              Nombre: values[nombreIdx] || '',
+              Telefono: values[telefonoIdx] || '',
+              Deuda: deudaIdx !== -1 ? values[deudaIdx] : '0',
+              Compañia: companiaIdx !== -1 ? values[companiaIdx] : ''
+            };
+
+            // Validar que tenga al menos nombre y teléfono
+            if (cliente.Nombre && cliente.Telefono) {
+              loadedClients.push(cliente);
+            } else {
+              errores++;
+            }
+          } else {
+            errores++;
           }
         }
 
+        if (loadedClients.length === 0) {
+          alert('❌ No se pudieron cargar clientes. Verifica el formato del CSV.');
+          return;
+        }
+
         displayLoadedClients();
-        addLog(`${loadedClients.length} clientes cargados desde CSV`, 'success');
+        addLog(`✅ ${loadedClients.length} clientes cargados desde CSV${errores > 0 ? ` (${errores} filas con errores)` : ''}`, 'success');
+        
+        if (errores > 0) {
+          alert(`⚠️ Se cargaron ${loadedClients.length} clientes correctamente.\n${errores} filas fueron ignoradas por falta de datos.`);
+        }
       };
 
       reader.readAsText(file);
@@ -1324,7 +1453,7 @@
             <div>
               <div class="client-name">${client.Nombre}</div>
               <div class="client-info">
-                📞 ${client.Telefono} • 💰 $${client.Deuda} • 🏢 ${client.Compañia}
+                📞 ${client.Telefono} • 💰 $${client.Deuda} • 🏢 ${client.Compañia || 'N/A'}
               </div>
             </div>
             <button class="btn btn-danger" onclick="removeClient(${index})" style="padding: 8px 15px;">
