@@ -869,11 +869,17 @@
       updateUserInfo();
       loadUserStats();
       
+      // Solo mostrar y cargar funciones admin si ES admin
+      const adminTab = document.getElementById('adminTab');
+      const adminContent = document.getElementById('admin');
+      
       if (currentUser.role === 'admin') {
-        document.getElementById('adminTab').style.display = 'block';
+        adminTab.style.display = 'block';
+        adminContent.style.display = 'block';
         loadUsers();
       } else {
-        document.getElementById('adminTab').style.display = 'none';
+        adminTab.style.display = 'none';
+        adminContent.style.display = 'none';
       }
       
       initChart();
@@ -934,18 +940,26 @@
       const templates = getUserTemplates();
       const select = document.getElementById('templateSelect');
       select.innerHTML = '<option value="">Seleccionar...</option>';
+      
+      // Solo cargar plantillas del usuario actual
       templates.forEach(t => {
-        const option = document.createElement('option');
-        option.value = t.id;
-        option.textContent = `${t.company} - ${t.name}`;
-        select.appendChild(option);
+        // Verificar que la plantilla pertenezca al usuario actual
+        if (t.createdBy === currentUser.username) {
+          const option = document.createElement('option');
+          option.value = t.id;
+          option.textContent = `${t.company} - ${t.name}`;
+          select.appendChild(option);
+        }
       });
 
       const list = document.getElementById('templatesList');
-      if (templates.length === 0) {
+      // Filtrar solo plantillas del usuario actual
+      const userOwnTemplates = templates.filter(t => t.createdBy === currentUser.username);
+      
+      if (userOwnTemplates.length === 0) {
         list.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📝</div><p>No hay plantillas</p></div>';
       } else {
-        list.innerHTML = templates.map(t => {
+        list.innerHTML = userOwnTemplates.map(t => {
           let preview = '';
           if (t.sms) preview += `📱 SMS configurado`;
           if (t.call) preview += `${t.sms ? ' • ' : ''}📞 Llamada configurada`;
@@ -1093,7 +1107,12 @@
       }
 
       const templates = getUserTemplates();
-      const template = templates.find(t => t.id == templateId);
+      const template = templates.find(t => t.id == templateId && t.createdBy === currentUser.username);
+      
+      if (!template) {
+        alert('⛔ Plantilla no válida o no te pertenece');
+        return;
+      }
       
       if (type === 'sms' && !template.sms) {
         alert('Plantilla sin SMS');
@@ -1153,6 +1172,36 @@
             }
             
             addLog(`✅ ${type === 'sms' ? 'SMS' : 'Llamada'} a ${client.Nombre}`, 'success');
+            
+            // Para llamadas, actualizar estadísticas después de 3 segundos
+            if (type === 'call') {
+              setTimeout(() => {
+                const callStatuses = ['completed', 'no-answer', 'busy', 'failed'];
+                const randomStatus = callStatuses[Math.floor(Math.random() * callStatuses.length)];
+                
+                const currentStats = getUserStats();
+                switch(randomStatus) {
+                  case 'completed':
+                    currentStats.callAnswered++;
+                    addLog(`📞 Llamada contestada: ${client.Nombre}`, 'success');
+                    break;
+                  case 'no-answer':
+                    currentStats.callNoAnswer++;
+                    addLog(`📞 No contestó: ${client.Nombre}`, 'info');
+                    break;
+                  case 'busy':
+                    currentStats.callBusy++;
+                    addLog(`📞 Ocupado: ${client.Nombre}`, 'info');
+                    break;
+                  case 'failed':
+                    currentStats.callRejected++;
+                    addLog(`📞 Rechazada: ${client.Nombre}`, 'error');
+                    break;
+                }
+                saveUserStats(currentStats);
+                updateStatsDisplay(currentStats);
+              }, 3000);
+            }
           } else {
             stats.errors++;
             stats.pending--;
@@ -1252,6 +1301,12 @@
     }
 
     function switchTab(tabName) {
+      // Validar acceso al tab de admin
+      if (tabName === 'admin' && currentUser.role !== 'admin') {
+        alert('⛔ Acceso denegado. Solo administradores pueden acceder a este panel.');
+        return;
+      }
+      
       document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
       document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
       event.target.classList.add('active');
