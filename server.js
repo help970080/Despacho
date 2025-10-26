@@ -15,10 +15,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 // ===================================
 // 🗄️ CONEXIÓN A MONGODB
 // ===================================
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/cobranza-system', {
-  useNewUrlParser: true,
-  useUnifiedTopology: true
-})
+mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/cobranza-system')
 .then(() => console.log('✅ Conectado a MongoDB'))
 .catch(err => console.error('❌ Error conectando a MongoDB:', err));
 
@@ -149,11 +146,15 @@ const ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID;
 const AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN;
 const TWILIO_PHONE_SMS = process.env.TWILIO_PHONE_SMS;
 const TWILIO_PHONE_CALL = process.env.TWILIO_PHONE_CALL;
-const BASE_URL = process.env.BASE_URL || `http://localhost:${process.env.PORT || 3000}`;
+const BASE_URL = process.env.RENDER_EXTERNAL_URL || process.env.BASE_URL || `http://localhost:${process.env.PORT || 3000}`;
 
 if (!ACCOUNT_SID || !AUTH_TOKEN || !TWILIO_PHONE_SMS || !TWILIO_PHONE_CALL) {
   console.error('❌ ERROR: Faltan variables de entorno de Twilio');
-  process.exit(1);
+  console.log('Variables recibidas:');
+  console.log('ACCOUNT_SID:', ACCOUNT_SID ? 'Definido' : 'No definido');
+  console.log('AUTH_TOKEN:', AUTH_TOKEN ? 'Definido' : 'No definido');
+  console.log('TWILIO_PHONE_SMS:', TWILIO_PHONE_SMS ? 'Definido' : 'No definido');
+  console.log('TWILIO_PHONE_CALL:', TWILIO_PHONE_CALL ? 'Definido' : 'No definido');
 }
 
 const client = twilio(ACCOUNT_SID, AUTH_TOKEN);
@@ -254,27 +255,8 @@ app.delete('/api/users/:username', async (req, res) => {
   }
 });
 
-app.post('/api/users/:username/credits', async (req, res) => {
-  try {
-    const { username } = req.params;
-    const { amount } = req.body;
-    
-    const user = await User.findOne({ username });
-    if (!user) {
-      return res.status(404).json({ success: false, error: 'Usuario no encontrado' });
-    }
-    
-    user.credits += amount;
-    await user.save();
-    
-    res.json({ success: true, credits: user.credits });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
 // ===================================
-// 📝 ENDPOINTS DE PLANTILLAS
+// 📄 ENDPOINTS DE PLANTILLAS
 // ===================================
 app.get('/api/templates/:username', async (req, res) => {
   try {
@@ -288,22 +270,21 @@ app.get('/api/templates/:username', async (req, res) => {
 
 app.post('/api/templates', async (req, res) => {
   try {
-    const { username, company, name, smsMessage, callScript } = req.body;
-    
-    const template = await Template.create({
-      username,
-      company,
-      name,
-      smsMessage,
-      callScript
-    });
-    
-    await ActivityLog.create({
-      username,
-      message: `Plantilla "${name}" creada`,
-      type: 'success'
-    });
-    
+    const template = await Template.create(req.body);
+    res.json({ success: true, template });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.put('/api/templates/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const template = await Template.findByIdAndUpdate(
+      id,
+      { ...req.body, updatedAt: new Date() },
+      { new: true }
+    );
     res.json({ success: true, template });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
@@ -312,7 +293,8 @@ app.post('/api/templates', async (req, res) => {
 
 app.delete('/api/templates/:id', async (req, res) => {
   try {
-    await Template.findByIdAndDelete(req.params.id);
+    const { id } = req.params;
+    await Template.findByIdAndDelete(id);
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
@@ -332,42 +314,60 @@ app.get('/api/clients/:username', async (req, res) => {
   }
 });
 
-app.post('/api/clients/bulk', async (req, res) => {
+app.post('/api/clients', async (req, res) => {
   try {
-    const { username, clients } = req.body;
-    
-    const clientDocs = clients.map(c => ({
-      username,
-      name: c.Nombre,
-      phone: c.Telefono,
-      cleanPhone: c.cleanPhone,
-      debt: c.Deuda,
-      company: c.Compañia
-    }));
-    
-    const result = await Client.insertMany(clientDocs);
-    
-    await ActivityLog.create({
-      username,
-      message: `${result.length} clientes cargados`,
-      type: 'success'
-    });
-    
-    res.json({ success: true, count: result.length });
+    const client = await Client.create(req.body);
+    res.json({ success: true, client });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
 });
 
-app.patch('/api/clients/:id', async (req, res) => {
+app.post('/api/clients/bulk', async (req, res) => {
   try {
-    const { status, notes } = req.body;
-    const client = await Client.findByIdAndUpdate(
-      req.params.id,
-      { status, notes, lastContact: new Date() },
-      { new: true }
-    );
+    const { username, clients } = req.body;
+    const clientsToInsert = clients.map(c => ({
+      username,
+      name: c.name,
+      phone: c.phone,
+      cleanPhone: c.cleanPhone,
+      debt: c.debt || '0',
+      company: c.company || '',
+      status: 'pending'
+    }));
+    
+    const insertedClients = await Client.insertMany(clientsToInsert);
+    res.json({ success: true, count: insertedClients.length });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.put('/api/clients/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const client = await Client.findByIdAndUpdate(id, req.body, { new: true });
     res.json({ success: true, client });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.delete('/api/clients/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await Client.findByIdAndDelete(id);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.delete('/api/clients/user/:username', async (req, res) => {
+  try {
+    const { username } = req.params;
+    await Client.deleteMany({ username });
+    res.json({ success: true });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
@@ -381,8 +381,18 @@ app.get('/api/scheduled-campaigns/:username', async (req, res) => {
     const { username } = req.params;
     const campaigns = await ScheduledCampaign.find({ username })
       .populate('templateId')
-      .sort({ scheduledDate: 1 });
-    res.json({ success: true, campaigns });
+      .sort({ scheduledDate: -1 });
+    
+    const campaignsWithClientCount = campaigns.map(c => ({
+      ...c.toObject(),
+      results: {
+        total: c.clients.length,
+        success: c.results.success || 0,
+        errors: c.results.errors || 0
+      }
+    }));
+    
+    res.json({ success: true, campaigns: campaignsWithClientCount });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
@@ -397,15 +407,14 @@ app.post('/api/scheduled-campaigns', async (req, res) => {
       name,
       templateId,
       type,
-      scheduledDate: new Date(scheduledDate),
+      scheduledDate,
       clients: clientIds,
-      results: { total: clientIds.length }
-    });
-    
-    await ActivityLog.create({
-      username,
-      message: `Campaña "${name}" programada para ${new Date(scheduledDate).toLocaleString('es-MX')}`,
-      type: 'success'
+      status: 'scheduled',
+      results: {
+        total: clientIds.length,
+        success: 0,
+        errors: 0
+      }
     });
     
     res.json({ success: true, campaign });
@@ -416,10 +425,8 @@ app.post('/api/scheduled-campaigns', async (req, res) => {
 
 app.delete('/api/scheduled-campaigns/:id', async (req, res) => {
   try {
-    await ScheduledCampaign.findByIdAndUpdate(
-      req.params.id,
-      { status: 'cancelled' }
-    );
+    const { id } = req.params;
+    await ScheduledCampaign.findByIdAndUpdate(id, { status: 'cancelled' });
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
@@ -569,15 +576,15 @@ cron.schedule('* * * * *', async () => {
       let success = 0;
       let errors = 0;
       
-      for (const client of campaign.clients) {
+      for (const clientDoc of campaign.clients) {
         try {
           const message = replaceVariables(
             campaign.type === 'sms' ? template.smsMessage : template.callScript,
             {
-              Nombre: client.name,
-              Telefono: client.phone,
-              Deuda: client.debt,
-              Compañia: client.company
+              Nombre: clientDoc.name,
+              Telefono: clientDoc.phone,
+              Deuda: clientDoc.debt,
+              Compañia: clientDoc.company
             }
           );
           
@@ -585,7 +592,7 @@ cron.schedule('* * * * *', async () => {
             await client.messages.create({
               body: message,
               from: TWILIO_PHONE_SMS,
-              to: client.cleanPhone
+              to: clientDoc.cleanPhone
             });
           } else {
             const twiml = `<?xml version="1.0" encoding="UTF-8"?>
@@ -595,20 +602,20 @@ cron.schedule('* * * * *', async () => {
             await client.calls.create({
               twiml: twiml,
               from: TWILIO_PHONE_CALL,
-              to: client.cleanPhone
+              to: clientDoc.cleanPhone
             });
           }
           
           success++;
           
           // Actualizar cliente
-          client.lastContact = new Date();
-          client.status = 'contacted';
-          await client.save();
+          clientDoc.lastContact = new Date();
+          clientDoc.status = 'contacted';
+          await clientDoc.save();
           
         } catch (error) {
           errors++;
-          console.error(`Error con cliente ${client.name}:`, error);
+          console.error(`Error con cliente ${clientDoc.name}:`, error);
         }
         
         // Delay entre envíos
@@ -668,7 +675,8 @@ app.get('/api/test', (req, res) => {
     status: 'OK',
     message: '🚀 Servidor con MongoDB funcionando',
     database: mongoose.connection.readyState === 1 ? 'Conectada' : 'Desconectada',
-    scheduler: 'Activo'
+    scheduler: 'Activo',
+    mongodbUri: process.env.MONGODB_URI ? 'Configurada' : 'No configurada'
   });
 });
 
@@ -680,8 +688,9 @@ app.listen(PORT, () => {
   console.log('╔══════════════════════════════════════════════╗');
   console.log('🚀 SERVIDOR CON MONGODB Y SCHEDULER INICIADO');
   console.log('╚══════════════════════════════════════════════╝');
-  console.log(`🔗 URL: http://localhost:${PORT}`);
+  console.log(`🔗 URL: ${BASE_URL}`);
   console.log(`📊 MongoDB: ${mongoose.connection.readyState === 1 ? '✅ Conectada' : '⏳ Conectando...'}`);
   console.log(`⏰ Scheduler: ✅ Activo (revisa cada minuto)`);
+  console.log(`🌐 Puerto: ${PORT}`);
   console.log('═══════════════════════════════════════════════\n');
 });
