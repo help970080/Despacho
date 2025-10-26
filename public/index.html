@@ -27,7 +27,6 @@
       overflow: hidden;
     }
 
-    /* 🔐 PANTALLA DE LOGIN */
     .login-screen {
       display: flex;
       justify-content: center;
@@ -426,19 +425,6 @@
       transform: translateY(-2px);
     }
 
-    .template-preview {
-      background: white;
-      padding: 15px;
-      border-radius: 8px;
-      margin-top: 15px;
-      border: 2px dashed #e9ecef;
-    }
-
-    .template-preview h4 {
-      margin-bottom: 10px;
-      color: #667eea;
-    }
-
     .admin-only {
       background: #fef3c7;
       border-left: 4px solid #f59e0b;
@@ -556,21 +542,24 @@
     }
 
     .admin-view-toggle {
-      background: rgba(255,255,255,0.2);
-      padding: 8px 15px;
+      background: #667eea;
+      color: white;
+      padding: 10px 20px;
       border-radius: 8px;
       font-size: 0.9em;
       cursor: pointer;
       transition: all 0.3s;
+      display: inline-block;
+      font-weight: 600;
     }
 
     .admin-view-toggle:hover {
-      background: rgba(255,255,255,0.3);
+      background: #5568d3;
+      transform: translateY(-2px);
     }
   </style>
 </head>
 <body>
-  <!-- 🔐 PANTALLA DE LOGIN -->
   <div class="login-screen" id="loginScreen">
     <div class="login-box">
       <h1>🔐 Sistema de Cobranza</h1>
@@ -595,15 +584,12 @@
     </div>
   </div>
 
-  <!-- 📊 PANTALLA PRINCIPAL -->
   <div class="main-screen" id="mainScreen">
     <div class="container">
       <div class="header">
         <div>
           <h1>📱 Sistema de Cobranza</h1>
-          <div class="tenant-indicator" id="tenantIndicator">
-            🏢 Espacio Personal
-          </div>
+          <div class="tenant-indicator" id="tenantIndicator">🏢 Espacio Personal</div>
         </div>
         <div class="user-info">
           <div>
@@ -622,71 +608,55 @@
         <button class="tab" onclick="switchTab('admin')" id="adminTab" style="display:none">⚙️ Administración</button>
       </div>
 
-      <!-- TAB: CAMPAÑAS -->
       <div class="tab-content active" id="campaign">
         <div class="info-banner">
           <span style="font-size: 1.5em;">ℹ️</span>
-          <div>
-            <strong>Espacio Personal:</strong> Tus campañas y datos son privados. Solo tú y los administradores pueden verlos.
-          </div>
+          <div><strong>Espacio Personal:</strong> Tus campañas y datos son privados.</div>
         </div>
-
         <div class="section">
           <h2>📂 Cargar Clientes</h2>
           <div class="file-input-wrapper">
             <input type="file" id="fileInput" accept=".csv,.xlsx,.xls">
-            <label for="fileInput" class="file-input-label">📄 Seleccionar Archivo CSV/Excel</label>
+            <label for="fileInput" class="file-input-label">📄 Seleccionar Archivo</label>
           </div>
           <div id="fileName" style="margin-top: 10px; color: #666;"></div>
         </div>
-
         <div class="section">
           <h2>🚀 Configurar Campaña</h2>
           <div class="form-group">
-            <label>Plantilla a usar:</label>
-            <select id="templateSelect">
-              <option value="">Seleccionar plantilla...</option>
-            </select>
+            <label>Plantilla:</label>
+            <select id="templateSelect"><option value="">Seleccionar...</option></select>
           </div>
           <div class="two-columns">
-            <button class="btn btn-success" onclick="startCampaign('sms')" id="btnSMS" disabled>📱 Enviar SMS</button>
-            <button class="btn btn-warning" onclick="startCampaign('call')" id="btnCall" disabled>📞 Hacer Llamadas</button>
+            <button class="btn btn-success" onclick="startCampaign('sms')" id="btnSMS" disabled>📱 SMS</button>
+            <button class="btn btn-warning" onclick="startCampaign('call')" id="btnCall" disabled>📞 Llamadas</button>
           </div>
           <div class="progress-bar" id="progressBar" style="display: none;">
             <div class="progress-fill" id="progressFill">0%</div>
           </div>
         </div>
-
         <div class="section">
-          <h2>📊 Registro de Actividad</h2>
+          <h2>📊 Registro</h2>
           <div class="log-container" id="logContainer">
-            <div class="log-entry log-info">ℹ️ Sistema iniciado - Espacio personal activo</div>
+            <div class="log-entry log-info">ℹ️ Sistema iniciado</div>
           </div>
         </div>
       </div>
 
-      <!-- TAB: PLANTILLAS -->
       <div class="tab-content" id="templates">
-        <div class="info-banner">
-          <span style="font-size: 1.5em;">📝</span>
-          <div>
-            <strong>Plantillas Personales:</strong> Crea y administra tus propias plantillas. No se mezclarán con las de otros usuarios.
-          </div>
-        </div>
-
         <div class="section">
-          <h2>📝 Crear Nueva Plantilla</h2>
+          <h2>📝 Nueva Plantilla</h2>
           <div class="form-group">
-            <label>Nombre de la Compañía:</label>
-            <input type="text" id="companyName" placeholder="Ej: Banco Nacional">
+            <label>Compañía:</label>
+            <input type="text" id="companyName" placeholder="Ej: Banco">
           </div>
           <div class="form-group">
-            <label>Nombre de la Plantilla:</label>
-            <input type="text" id="templateName" placeholder="Ej: Recordatorio Pago Vencido">
+            <label>Nombre:</label>
+            <input type="text" id="templateName" placeholder="Ej: Recordatorio">
           </div>
           <div class="form-group">
-            <label>Mensaje SMS:</label>
-            <textarea id="smsMessage" placeholder="Escribe tu mensaje aquí..."></textarea>
+            <label>SMS:</label>
+            <textarea id="smsMessage"></textarea>
             <div class="variable-tags">
               <span class="variable-tag" onclick="insertVariable('smsMessage', '{Nombre}')">👤 {Nombre}</span>
               <span class="variable-tag" onclick="insertVariable('smsMessage', '{Telefono}')">📱 {Telefono}</span>
@@ -695,8 +665,8 @@
             </div>
           </div>
           <div class="form-group">
-            <label>Script de Llamada:</label>
-            <textarea id="callScript" placeholder="Escribe el script para la llamada..."></textarea>
+            <label>Llamada:</label>
+            <textarea id="callScript"></textarea>
             <div class="variable-tags">
               <span class="variable-tag" onclick="insertVariable('callScript', '{Nombre}')">👤 {Nombre}</span>
               <span class="variable-tag" onclick="insertVariable('callScript', '{Telefono}')">📱 {Telefono}</span>
@@ -704,28 +674,19 @@
               <span class="variable-tag" onclick="insertVariable('callScript', '{Compañia}')">🏢 {Compañia}</span>
             </div>
           </div>
-          <button class="btn btn-primary" onclick="saveTemplate()">💾 Guardar Plantilla</button>
+          <button class="btn btn-primary" onclick="saveTemplate()">💾 Guardar</button>
         </div>
-
         <div class="section">
           <h2>📋 Mis Plantillas</h2>
           <div id="templatesList"></div>
         </div>
       </div>
 
-      <!-- TAB: ESTADÍSTICAS -->
       <div class="tab-content" id="stats">
-        <div class="info-banner">
-          <span style="font-size: 1.5em;">📈</span>
-          <div>
-            <strong>Estadísticas Personales:</strong> Estas métricas reflejan únicamente tus campañas.
-          </div>
-        </div>
-
         <div class="stats-grid">
           <div class="stat-card">
             <div class="stat-number total" id="statTotal">0</div>
-            <div class="stat-label">Total Enviados</div>
+            <div class="stat-label">Total</div>
           </div>
           <div class="stat-card">
             <div class="stat-number success" id="statSuccess">0</div>
@@ -740,14 +701,12 @@
             <div class="stat-label">Pendientes</div>
           </div>
         </div>
-
         <div class="chart-container">
-          <h2>📊 Gráfica de Resultados</h2>
+          <h2>📊 Gráfica</h2>
           <canvas id="statsChart"></canvas>
         </div>
-
         <div class="section">
-          <h2>📞 Detalle de Llamadas</h2>
+          <h2>📞 Llamadas</h2>
           <div class="stats-grid">
             <div class="stat-card">
               <div class="stat-number success" id="callAnswered">0</div>
@@ -769,39 +728,35 @@
         </div>
       </div>
 
-      <!-- TAB: ADMINISTRACIÓN -->
       <div class="tab-content" id="admin">
         <div class="admin-only">
-          <strong>⚠️ Panel de Administrador</strong> - Tienes acceso completo a todos los usuarios y sus datos.
+          <strong>⚠️ Panel Administrador</strong> - Acceso completo al sistema
         </div>
-
-        <!-- Vista Global de Admin -->
-        <div class="section" id="adminGlobalView">
-          <h2>🌐 Vista Global del Sistema</h2>
+        <div class="section">
+          <h2>🌐 Vista Global</h2>
           <div class="admin-view-toggle" onclick="toggleAdminView()">
-            <span id="adminViewText">👁️ Ver todas las plantillas de usuarios</span>
+            <span id="adminViewText">👁️ Ver datos de todos los usuarios</span>
           </div>
           <div id="allTemplatesView" style="display:none; margin-top: 20px;"></div>
           <div id="allStatsView" style="display:none; margin-top: 20px;"></div>
         </div>
-
         <div class="section">
-          <h2>👥 Crear Nuevo Usuario</h2>
+          <h2>👥 Crear Usuario</h2>
           <div class="form-group">
-            <label>Nombre de Usuario:</label>
-            <input type="text" id="newUserName" placeholder="Nombre del usuario">
+            <label>Usuario:</label>
+            <input type="text" id="newUserName">
           </div>
           <div class="form-group">
             <label>Email:</label>
-            <input type="email" id="newUserEmail" placeholder="email@ejemplo.com">
+            <input type="email" id="newUserEmail">
           </div>
           <div class="form-group password-toggle">
             <label>Contraseña:</label>
-            <input type="password" id="newUserPassword" placeholder="Contraseña segura">
+            <input type="password" id="newUserPassword">
             <button type="button" class="password-toggle-btn" onclick="togglePassword('newUserPassword')">👁️</button>
           </div>
           <div class="form-group">
-            <label>Créditos Iniciales:</label>
+            <label>Créditos:</label>
             <input type="number" id="newUserCredits" value="100">
           </div>
           <div class="form-group">
@@ -811,14 +766,12 @@
               <option value="admin">Administrador</option>
             </select>
           </div>
-          <button class="btn btn-primary" onclick="createUser()">➕ Crear Usuario</button>
+          <button class="btn btn-primary" onclick="createUser()">➕ Crear</button>
         </div>
-
         <div class="section">
-          <h2>👤 Lista de Usuarios</h2>
+          <h2>👤 Usuarios</h2>
           <div class="user-table" id="usersList"></div>
         </div>
-
         <div class="section">
           <h2>💳 Asignar Créditos</h2>
           <div class="form-group">
@@ -826,10 +779,10 @@
             <select id="creditUserId"></select>
           </div>
           <div class="form-group">
-            <label>Cantidad de Créditos:</label>
+            <label>Cantidad:</label>
             <input type="number" id="creditAmount" value="50">
           </div>
-          <button class="btn btn-success" onclick="assignCredits()">💰 Asignar Créditos</button>
+          <button class="btn btn-success" onclick="assignCredits()">💰 Asignar</button>
         </div>
       </div>
     </div>
@@ -839,17 +792,12 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
   <script>
-    // 🌐 API Base URL
-    const API_BASE = window.location.hostname === 'localhost' 
-      ? 'http://localhost:3000/api' 
-      : `${window.location.origin}/api`;
-
+    const API_BASE = window.location.hostname === 'localhost' ? 'http://localhost:3000/api' : `${window.location.origin}/api`;
     let clientsData = [];
     let currentUser = null;
     let users = [];
     let adminViewExpanded = false;
 
-    // 🏢 SISTEMA MULTITENANCY - Datos por usuario
     const STORAGE_KEYS = {
       users: 'system_users',
       templates: (username) => `templates_${username}`,
@@ -857,7 +805,6 @@
       logs: (username) => `logs_${username}`
     };
 
-    // 🔐 SISTEMA DE AUTENTICACIÓN
     function initializeSystem() {
       const savedUsers = localStorage.getItem(STORAGE_KEYS.users);
       if (savedUsers) {
@@ -874,7 +821,7 @@
           createdAt: new Date().toISOString()
         }];
         saveUsers();
-        console.log('⚠️ Usuario admin creado. Usuario: admin | Contraseña: admin123');
+        console.log('✅ Usuario: admin | Contraseña: admin123');
       }
 
       const sessionUser = sessionStorage.getItem('current_user');
@@ -888,6 +835,676 @@
 
     function handleLogin(event) {
       event.preventDefault();
-      
       const username = document.getElementById('loginUsername').value.trim();
-      const password =
+      const password = document.getElementById('loginPassword').value;
+      const user = users.find(u => u.username === username && u.password === password);
+      
+      if (user) {
+        currentUser = user;
+        sessionStorage.setItem('current_user', JSON.stringify(user));
+        showMainScreen();
+        addLog(`✅ Sesión: ${user.name}`, 'success');
+      } else {
+        showLoginError('Usuario o contraseña incorrectos');
+      }
+    }
+
+    function showLoginError(message) {
+      const errorDiv = document.getElementById('loginError');
+      errorDiv.textContent = message;
+      errorDiv.style.display = 'block';
+      setTimeout(() => errorDiv.style.display = 'none', 3000);
+    }
+
+    function showLoginScreen() {
+      document.getElementById('loginScreen').style.display = 'flex';
+      document.getElementById('mainScreen').style.display = 'none';
+    }
+
+    function showMainScreen() {
+      document.getElementById('loginScreen').style.display = 'none';
+      document.getElementById('mainScreen').style.display = 'block';
+      updateTenantIndicator();
+      loadUserTemplates();
+      updateUserInfo();
+      loadUserStats();
+      
+      if (currentUser.role === 'admin') {
+        document.getElementById('adminTab').style.display = 'block';
+        loadUsers();
+      } else {
+        document.getElementById('adminTab').style.display = 'none';
+      }
+      
+      initChart();
+      testConnection();
+    }
+
+    function updateTenantIndicator() {
+      const indicator = document.getElementById('tenantIndicator');
+      indicator.innerHTML = currentUser.role === 'admin' ? '👑 Administrador' : `🏢 ${currentUser.name}`;
+    }
+
+    function logout() {
+      if (confirm('¿Cerrar sesión?')) {
+        sessionStorage.removeItem('current_user');
+        currentUser = null;
+        showLoginScreen();
+        document.getElementById('loginUsername').value = '';
+        document.getElementById('loginPassword').value = '';
+      }
+    }
+
+    function togglePassword(fieldId) {
+      const field = document.getElementById(fieldId);
+      field.type = field.type === 'password' ? 'text' : 'password';
+    }
+
+    function saveUsers() {
+      localStorage.setItem(STORAGE_KEYS.users, JSON.stringify(users));
+    }
+
+    function getUserTemplates() {
+      const key = STORAGE_KEYS.templates(currentUser.username);
+      const saved = localStorage.getItem(key);
+      return saved ? JSON.parse(saved) : [];
+    }
+
+    function saveUserTemplates(templates) {
+      const key = STORAGE_KEYS.templates(currentUser.username);
+      localStorage.setItem(key, JSON.stringify(templates));
+    }
+
+    function getAllTemplates() {
+      const allTemplates = [];
+      users.forEach(user => {
+        const key = STORAGE_KEYS.templates(user.username);
+        const userTemplates = localStorage.getItem(key);
+        if (userTemplates) {
+          const templates = JSON.parse(userTemplates);
+          templates.forEach(t => {
+            allTemplates.push({...t, ownerUsername: user.username, ownerName: user.name});
+          });
+        }
+      });
+      return allTemplates;
+    }
+
+    function loadUserTemplates() {
+      const templates = getUserTemplates();
+      const select = document.getElementById('templateSelect');
+      select.innerHTML = '<option value="">Seleccionar...</option>';
+      templates.forEach(t => {
+        const option = document.createElement('option');
+        option.value = t.id;
+        option.textContent = `${t.company} - ${t.name}`;
+        select.appendChild(option);
+      });
+
+      const list = document.getElementById('templatesList');
+      if (templates.length === 0) {
+        list.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📝</div><p>No hay plantillas</p></div>';
+      } else {
+        list.innerHTML = templates.map(t => {
+          let preview = '';
+          if (t.sms) preview += `📱 SMS configurado`;
+          if (t.call) preview += `${t.sms ? ' • ' : ''}📞 Llamada configurada`;
+          return `
+          <div class="template-card">
+            <div class="template-header">
+              <div>
+                <strong>${t.company} - ${t.name}</strong>
+                <div class="template-meta">${new Date(t.createdAt || Date.now()).toLocaleDateString()}</div>
+              </div>
+              <button class="btn btn-danger" onclick="deleteTemplate(${t.id})" style="padding: 5px 10px; font-size: 0.9em;">🗑️</button>
+            </div>
+            <p style="margin: 5px 0; color: #666; font-size: 0.9em;">${preview}</p>
+          </div>`;
+        }).join('');
+      }
+    }
+
+    function saveTemplate() {
+      const template = {
+        id: Date.now(),
+        company: document.getElementById('companyName').value,
+        name: document.getElementById('templateName').value,
+        sms: document.getElementById('smsMessage').value,
+        call: document.getElementById('callScript').value,
+        createdBy: currentUser.username,
+        createdAt: new Date().toISOString()
+      };
+
+      if (!template.name || !template.company) {
+        alert('Completa nombre y compañía');
+        return;
+      }
+      if (!template.sms && !template.call) {
+        alert('Completa al menos SMS o Llamada');
+        return;
+      }
+
+      const templates = getUserTemplates();
+      templates.push(template);
+      saveUserTemplates(templates);
+      loadUserTemplates();
+      
+      let savedTypes = [];
+      if (template.sms) savedTypes.push('SMS');
+      if (template.call) savedTypes.push('Llamadas');
+      addLog(`Plantilla "${template.name}" guardada (${savedTypes.join(' y ')})`, 'success');
+      
+      document.getElementById('companyName').value = '';
+      document.getElementById('templateName').value = '';
+      document.getElementById('smsMessage').value = '';
+      document.getElementById('callScript').value = '';
+    }
+
+    function deleteTemplate(id) {
+      if (confirm('¿Eliminar plantilla?')) {
+        const templates = getUserTemplates();
+        const filtered = templates.filter(t => t.id !== id);
+        saveUserTemplates(filtered);
+        loadUserTemplates();
+        addLog('Plantilla eliminada', 'info');
+      }
+    }
+
+    function insertVariable(fieldId, variable) {
+      const field = document.getElementById(fieldId);
+      const start = field.selectionStart;
+      const end = field.selectionEnd;
+      const text = field.value;
+      field.value = text.substring(0, start) + variable + text.substring(end);
+      field.focus();
+    }
+
+    function replaceVariables(text, client) {
+      return text
+        .replace(/\{Nombre\}/g, client.Nombre)
+        .replace(/\{Telefono\}/g, client.Telefono)
+        .replace(/\{Deuda\}/g, client.Deuda)
+        .replace(/\{Compañia\}/g, client.Compañia);
+    }
+
+    function getUserStats() {
+      const key = STORAGE_KEYS.stats(currentUser.username);
+      const saved = localStorage.getItem(key);
+      return saved ? JSON.parse(saved) : {
+        total: 0, success: 0, errors: 0, pending: 0,
+        callAnswered: 0, callRejected: 0, callBusy: 0, callNoAnswer: 0
+      };
+    }
+
+    function saveUserStats(stats) {
+      const key = STORAGE_KEYS.stats(currentUser.username);
+      localStorage.setItem(key, JSON.stringify(stats));
+    }
+
+    function loadUserStats() {
+      const stats = getUserStats();
+      updateStatsDisplay(stats);
+      updateChart(stats);
+    }
+
+    function updateStatsDisplay(stats) {
+      document.getElementById('statTotal').textContent = stats.total;
+      document.getElementById('statSuccess').textContent = stats.success;
+      document.getElementById('statErrors').textContent = stats.errors;
+      document.getElementById('statPending').textContent = stats.pending;
+      document.getElementById('callAnswered').textContent = stats.callAnswered;
+      document.getElementById('callRejected').textContent = stats.callRejected;
+      document.getElementById('callBusy').textContent = stats.callBusy;
+      document.getElementById('callNoAnswer').textContent = stats.callNoAnswer;
+    }
+
+    function getUserLogs() {
+      const key = STORAGE_KEYS.logs(currentUser.username);
+      const saved = localStorage.getItem(key);
+      return saved ? JSON.parse(saved) : [];
+    }
+
+    function saveUserLogs(logs) {
+      const key = STORAGE_KEYS.logs(currentUser.username);
+      localStorage.setItem(key, JSON.stringify(logs));
+    }
+
+    function addLog(message, type = 'info') {
+      const log = document.getElementById('logContainer');
+      const entry = document.createElement('div');
+      entry.className = `log-entry log-${type}`;
+      const timestamp = new Date().toLocaleTimeString();
+      entry.textContent = `[${timestamp}] ${message}`;
+      log.insertBefore(entry, log.firstChild);
+      
+      const logs = getUserLogs();
+      logs.unshift({ message, type, timestamp: new Date().toISOString() });
+      if (logs.length > 50) logs.pop();
+      saveUserLogs(logs);
+      
+      if (log.children.length > 50) log.removeChild(log.lastChild);
+    }
+
+    async function startCampaign(type) {
+      const templateId = document.getElementById('templateSelect').value;
+      if (!templateId) {
+        alert('Selecciona una plantilla');
+        return;
+      }
+
+      const templates = getUserTemplates();
+      const template = templates.find(t => t.id == templateId);
+      
+      if (type === 'sms' && !template.sms) {
+        alert('Plantilla sin SMS');
+        return;
+      }
+      if (type === 'call' && !template.call) {
+        alert('Plantilla sin llamada');
+        return;
+      }
+      
+      const costPerMessage = type === 'sms' ? 1 : 2;
+      const totalCost = clientsData.length * costPerMessage;
+
+      if (currentUser.credits < totalCost) {
+        alert(`❌ Créditos insuficientes.\n\nNecesitas: ${totalCost}\nTienes: ${currentUser.credits}`);
+        return;
+      }
+
+      if (!confirm(`🚀 Confirmar\n\n${clientsData.length} ${type === 'sms' ? 'SMS' : 'llamadas'} × ${costPerMessage} = ${totalCost} créditos\n\n¿Continuar?`)) return;
+
+      document.getElementById('btnSMS').disabled = true;
+      document.getElementById('btnCall').disabled = true;
+      document.getElementById('progressBar').style.display = 'block';
+
+      const stats = getUserStats();
+      stats.total += clientsData.length;
+      stats.pending = clientsData.length;
+      saveUserStats(stats);
+      updateStatsDisplay(stats);
+
+      for (let i = 0; i < clientsData.length; i++) {
+        const client = clientsData[i];
+        const progress = Math.round(((i + 1) / clientsData.length) * 100);
+        document.getElementById('progressFill').style.width = `${progress}%`;
+        document.getElementById('progressFill').textContent = `${progress}%`;
+
+        try {
+          let result;
+          if (type === 'sms') {
+            const message = replaceVariables(template.sms, client);
+            result = await sendSMS(client.cleanPhone, message);
+          } else {
+            const script = replaceVariables(template.call, client);
+            result = await makeCall(client.cleanPhone, script);
+          }
+
+          if (result.success) {
+            stats.success++;
+            stats.pending--;
+            currentUser.credits -= costPerMessage;
+            
+            const userIndex = users.findIndex(u => u.username === currentUser.username);
+            if (userIndex !== -1) {
+              users[userIndex].credits = currentUser.credits;
+              saveUsers();
+              sessionStorage.setItem('current_user', JSON.stringify(currentUser));
+            }
+            
+            addLog(`✅ ${type === 'sms' ? 'SMS' : 'Llamada'} a ${client.Nombre}`, 'success');
+          } else {
+            stats.errors++;
+            stats.pending--;
+            addLog(`❌ Error con ${client.Nombre}`, 'error');
+          }
+        } catch (error) {
+          stats.errors++;
+          stats.pending--;
+          addLog(`❌ Error: ${error.message}`, 'error');
+        }
+
+        saveUserStats(stats);
+        updateStatsDisplay(stats);
+        updateUserInfo();
+        updateChart(stats);
+        await new Promise(resolve => setTimeout(resolve, type === 'sms' ? 1000 : 2000));
+      }
+
+      document.getElementById('progressBar').style.display = 'none';
+      document.getElementById('btnSMS').disabled = false;
+      document.getElementById('btnCall').disabled = false;
+      addLog(`📊 Campaña completada: ${stats.success} exitosos`, 'info');
+    }
+
+    async function sendSMS(to, message) {
+      const response = await fetch(`${API_BASE}/send-sms`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ to, message })
+      });
+      return await response.json();
+    }
+
+    async function makeCall(to, script) {
+      const response = await fetch(`${API_BASE}/make-call`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ to, script })
+      });
+      return await response.json();
+    }
+
+    document.getElementById('fileInput').addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      document.getElementById('fileName').textContent = `Cargando: ${file.name}...`;
+      addLog(`Cargando: ${file.name}`, 'info');
+
+      try {
+        const ext = file.name.split('.').pop().toLowerCase();
+        if (ext === 'csv') {
+          Papa.parse(file, {
+            header: true,
+            skipEmptyLines: true,
+            complete: (results) => processClients(results.data, file.name)
+          });
+        } else if (ext === 'xlsx' || ext === 'xls') {
+          const data = await file.arrayBuffer();
+          const workbook = XLSX.read(data);
+          const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+          const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+          processClients(jsonData, file.name);
+        }
+      } catch (error) {
+        addLog(`Error: ${error.message}`, 'error');
+      }
+    });
+
+    function processClients(data, filename) {
+      const cleanPhone = (phone) => {
+        if (!phone) return null;
+        const cleaned = phone.toString().replace(/\D/g, '');
+        if (cleaned.length === 10) return `+52${cleaned}`;
+        if (cleaned.length === 12 && cleaned.startsWith('52')) return `+${cleaned}`;
+        return null;
+      };
+
+      clientsData = data.map(row => ({
+        Nombre: row.Nombre || row.nombre || row.name || 'Sin nombre',
+        Telefono: row.Telefono || row.telefono || row.phone || '',
+        cleanPhone: cleanPhone(row.Telefono || row.telefono || row.phone),
+        Deuda: row.Deuda || row.deuda || row.debt || '0',
+        Compañia: document.getElementById('companyName').value || 'Compañía'
+      })).filter(c => c.cleanPhone);
+
+      document.getElementById('fileName').textContent = `✅ ${clientsData.length} clientes`;
+      document.getElementById('btnSMS').disabled = clientsData.length === 0;
+      document.getElementById('btnCall').disabled = clientsData.length === 0;
+      addLog(`${clientsData.length} clientes válidos`, 'success');
+    }
+
+    function updateUserInfo() {
+      document.getElementById('userName').textContent = currentUser.name;
+      document.getElementById('userRole').textContent = currentUser.role === 'admin' ? '👑 Admin' : '👤 Usuario';
+      document.getElementById('userCredits').textContent = currentUser.credits;
+    }
+
+    function switchTab(tabName) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      event.target.classList.add('active');
+      document.getElementById(tabName).classList.add('active');
+    }
+
+    let chart;
+    function initChart() {
+      const ctx = document.getElementById('statsChart').getContext('2d');
+      chart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: ['Exitosos', 'Errores', 'Pendientes'],
+          datasets: [{
+            data: [0, 0, 0],
+            backgroundColor: ['#10b981', '#ef4444', '#f59e0b']
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { position: 'bottom' } }
+        }
+      });
+    }
+
+    function updateChart(stats) {
+      if (chart) {
+        chart.data.datasets[0].data = [stats.success, stats.errors, stats.pending];
+        chart.update();
+      }
+    }
+
+    // 👑 FUNCIONES ADMIN - CON VALIDACIÓN
+    function toggleAdminView() {
+      if (currentUser.role !== 'admin') {
+        alert('⛔ Solo administradores');
+        return;
+      }
+      
+      adminViewExpanded = !adminViewExpanded;
+      const viewText = document.getElementById('adminViewText');
+      const allTemplatesView = document.getElementById('allTemplatesView');
+      
+      if (adminViewExpanded) {
+        viewText.textContent = '🔽 Ocultar vista global';
+        loadAllTemplatesView();
+        loadAllStatsView();
+        allTemplatesView.style.display = 'block';
+        document.getElementById('allStatsView').style.display = 'block';
+      } else {
+        viewText.textContent = '👁️ Ver datos de todos los usuarios';
+        allTemplatesView.style.display = 'none';
+        document.getElementById('allStatsView').style.display = 'none';
+      }
+    }
+
+    function loadAllTemplatesView() {
+      if (currentUser.role !== 'admin') return;
+      
+      const allTemplates = getAllTemplates();
+      const container = document.getElementById('allTemplatesView');
+      
+      if (allTemplates.length === 0) {
+        container.innerHTML = '<div class="empty-state"><p>Sin plantillas</p></div>';
+        return;
+      }
+
+      const grouped = {};
+      allTemplates.forEach(t => {
+        if (!grouped[t.ownerUsername]) {
+          grouped[t.ownerUsername] = { name: t.ownerName, templates: [] };
+        }
+        grouped[t.ownerUsername].templates.push(t);
+      });
+
+      let html = '<h3 style="margin-bottom: 15px;">📋 Todas las Plantillas</h3>';
+      Object.keys(grouped).forEach(username => {
+        const userData = grouped[username];
+        html += `
+          <div style="margin-bottom: 20px; background: white; padding: 15px; border-radius: 10px;">
+            <h4 style="color: #667eea; margin-bottom: 10px;">👤 ${userData.name} (${username})</h4>
+            ${userData.templates.map(t => `
+              <div class="template-card">
+                <strong>${t.company} - ${t.name}</strong>
+                <p style="margin: 5px 0; color: #666; font-size: 0.85em;">
+                  ${t.sms ? '📱 SMS' : ''} ${t.call ? '📞 Llamada' : ''}
+                </p>
+              </div>
+            `).join('')}
+          </div>`;
+      });
+      container.innerHTML = html;
+    }
+
+    function loadAllStatsView() {
+      if (currentUser.role !== 'admin') return;
+      
+      const container = document.getElementById('allStatsView');
+      let html = '<h3 style="margin-bottom: 15px;">📊 Estadísticas</h3>';
+      
+      users.forEach(user => {
+        const key = STORAGE_KEYS.stats(user.username);
+        const stats = localStorage.getItem(key);
+        const userStats = stats ? JSON.parse(stats) : null;
+        
+        if (userStats && userStats.total > 0) {
+          html += `
+            <div style="background: white; padding: 15px; border-radius: 10px; margin-bottom: 15px;">
+              <h4 style="color: #667eea; margin-bottom: 10px;">👤 ${user.name}</h4>
+              <div class="stats-grid" style="grid-template-columns: repeat(4, 1fr);">
+                <div style="text-align: center;">
+                  <div style="font-size: 1.5em; font-weight: bold; color: #667eea;">${userStats.total}</div>
+                  <div style="font-size: 0.85em; color: #666;">Total</div>
+                </div>
+                <div style="text-align: center;">
+                  <div style="font-size: 1.5em; font-weight: bold; color: #10b981;">${userStats.success}</div>
+                  <div style="font-size: 0.85em; color: #666;">Exitosos</div>
+                </div>
+                <div style="text-align: center;">
+                  <div style="font-size: 1.5em; font-weight: bold; color: #ef4444;">${userStats.errors}</div>
+                  <div style="font-size: 0.85em; color: #666;">Errores</div>
+                </div>
+                <div style="text-align: center;">
+                  <div style="font-size: 1.5em; font-weight: bold; color: #f59e0b;">${userStats.callAnswered}</div>
+                  <div style="font-size: 0.85em; color: #666;">Llamadas</div>
+                </div>
+              </div>
+            </div>`;
+        }
+      });
+      container.innerHTML = html;
+    }
+
+    function loadUsers() {
+      if (currentUser.role !== 'admin') return;
+      
+      const list = document.getElementById('usersList');
+      list.innerHTML = users.map(u => `
+        <div class="user-row">
+          <div class="user-details">
+            <div class="user-name">${u.name} (${u.username})</div>
+            <div class="user-meta">
+              ${u.email} • ${u.role === 'admin' ? '👑 Admin' : '👤 Usuario'} • 💳 ${u.credits} créditos
+            </div>
+          </div>
+          <div class="user-actions">
+            ${u.username !== 'admin' ? `<button class="btn btn-danger" onclick="deleteUser('${u.username}')" style="padding: 8px 15px; font-size: 0.9em;">🗑️</button>` : ''}
+          </div>
+        </div>
+      `).join('');
+
+      const select = document.getElementById('creditUserId');
+      select.innerHTML = users.map(u => `<option value="${u.username}">${u.name}</option>`).join('');
+    }
+
+    function createUser() {
+      if (currentUser.role !== 'admin') {
+        alert('⛔ Solo administradores');
+        return;
+      }
+      
+      const username = document.getElementById('newUserName').value.trim();
+      const email = document.getElementById('newUserEmail').value.trim();
+      const password = document.getElementById('newUserPassword').value;
+      const credits = parseInt(document.getElementById('newUserCredits').value);
+      const role = document.getElementById('newUserRole').value;
+
+      if (!username || !email || !password) {
+        alert('Completa todos los campos');
+        return;
+      }
+
+      if (users.find(u => u.username === username)) {
+        alert('Usuario ya existe');
+        return;
+      }
+
+      const newUser = {
+        id: Date.now(),
+        username, password,
+        name: username, email, credits, role,
+        createdAt: new Date().toISOString()
+      };
+
+      users.push(newUser);
+      saveUsers();
+      loadUsers();
+      addLog(`Usuario ${username} creado`, 'success');
+      
+      document.getElementById('newUserName').value = '';
+      document.getElementById('newUserEmail').value = '';
+      document.getElementById('newUserPassword').value = '';
+      document.getElementById('newUserCredits').value = '100';
+    }
+
+    function deleteUser(username) {
+      if (currentUser.role !== 'admin') {
+        alert('⛔ Solo administradores');
+        return;
+      }
+      
+      if (username === 'admin') {
+        alert('No se puede eliminar admin principal');
+        return;
+      }
+
+      if (confirm(`¿Eliminar ${username}?`)) {
+        localStorage.removeItem(STORAGE_KEYS.templates(username));
+        localStorage.removeItem(STORAGE_KEYS.stats(username));
+        localStorage.removeItem(STORAGE_KEYS.logs(username));
+        users = users.filter(u => u.username !== username);
+        saveUsers();
+        loadUsers();
+        addLog(`Usuario ${username} eliminado`, 'info');
+      }
+    }
+
+    function assignCredits() {
+      if (currentUser.role !== 'admin') {
+        alert('⛔ Solo administradores');
+        return;
+      }
+      
+      const username = document.getElementById('creditUserId').value;
+      const amount = parseInt(document.getElementById('creditAmount').value);
+      const user = users.find(u => u.username === username);
+      
+      if (user) {
+        user.credits += amount;
+        saveUsers();
+        
+        if (currentUser.username === username) {
+          currentUser.credits = user.credits;
+          sessionStorage.setItem('current_user', JSON.stringify(currentUser));
+        }
+        
+        loadUsers();
+        updateUserInfo();
+        addLog(`${amount} créditos a ${user.name}`, 'success');
+      }
+    }
+
+    async function testConnection() {
+      try {
+        const response = await fetch(`${API_BASE}/test`);
+        const data = await response.json();
+        if (data.status === 'OK') addLog('✅ Conexión OK', 'success');
+      } catch (error) {
+        addLog('⚠️ Modo offline', 'info');
+      }
+    }
+
+    window.onload = initializeSystem;
+  </script>
+</body>
+</html>
