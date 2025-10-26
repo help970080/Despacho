@@ -483,6 +483,50 @@ app.post('/api/stats/:username/update', async (req, res) => {
 });
 
 // ===================================
+// 📊 ENDPOINTS DE REPORTES
+// ===================================
+app.get('/api/reports/:username', async (req, res) => {
+  try {
+    const { username } = req.params;
+    const { dateStart, dateEnd, type, status } = req.query;
+    
+    // Construir filtros
+    let filters = { username };
+    
+    // Filtro de fechas
+    if (dateStart || dateEnd) {
+      filters.scheduledDate = {};
+      if (dateStart) {
+        filters.scheduledDate.$gte = new Date(dateStart);
+      }
+      if (dateEnd) {
+        const endDate = new Date(dateEnd);
+        endDate.setHours(23, 59, 59, 999);
+        filters.scheduledDate.$lte = endDate;
+      }
+    }
+    
+    // Filtro de tipo
+    if (type && type !== 'all') {
+      filters.type = type;
+    }
+    
+    // Filtro de estado
+    if (status && status !== 'all') {
+      filters.status = status;
+    }
+    
+    const campaigns = await ScheduledCampaign.find(filters)
+      .populate('templateId')
+      .sort({ scheduledDate: -1 });
+    
+    res.json({ success: true, campaigns });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ===================================
 // 📋 ENDPOINTS DE LOGS
 // ===================================
 app.get('/api/logs/:username', async (req, res) => {
@@ -699,9 +743,9 @@ app.get('/api/test', (req, res) => {
 // ===================================
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log('╔══════════════════════════════════════════════╗');
+  console.log('╔═══════════════════════════════════════════════╗');
   console.log('🚀 SERVIDOR CON MONGODB Y SCHEDULER INICIADO');
-  console.log('╚══════════════════════════════════════════════╝');
+  console.log('╚═══════════════════════════════════════════════╝');
   console.log(`🔗 URL: ${BASE_URL}`);
   console.log(`📊 MongoDB: ${mongoose.connection.readyState === 1 ? '✅ Conectada' : '⏳ Conectando...'}`);
   console.log(`⏰ Scheduler: ✅ Activo (revisa cada minuto)`);
