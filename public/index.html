@@ -1214,11 +1214,15 @@
       const totalCost = clientsData.length * costPerMessage;
 
       if (currentUser.credits < totalCost) {
-        alert(`Créditos insuficientes. Necesitas ${totalCost} créditos.`);
+        alert(`❌ Créditos insuficientes.\n\nNecesitas: ${totalCost} créditos\nTienes: ${currentUser.credits} créditos\nFaltan: ${totalCost - currentUser.credits} créditos`);
         return;
       }
 
-      if (!confirm(`Esta campaña costará ${totalCost} créditos. ¿Continuar?`)) return;
+      const costDetails = type === 'sms' 
+        ? `📱 ${clientsData.length} SMS × 1 crédito = ${totalCost} créditos`
+        : `📞 ${clientsData.length} llamadas × 2 créditos = ${totalCost} créditos`;
+
+      if (!confirm(`🚀 Confirmar Campaña\n\n${costDetails}\n\nCréditos disponibles: ${currentUser.credits}\nCréditos después: ${currentUser.credits - totalCost}\n\n¿Continuar?`)) return;
 
       document.getElementById('btnSMS').disabled = true;
       document.getElementById('btnCall').disabled = true;
@@ -1249,6 +1253,8 @@
           if (result.success) {
             stats.success++;
             stats.pending--;
+            
+            // Descontar créditos SOLO UNA VEZ por mensaje/llamada
             currentUser.credits -= costPerMessage;
             
             const userIndex = users.findIndex(u => u.username === currentUser.username);
@@ -1258,8 +1264,9 @@
               sessionStorage.setItem('current_user', JSON.stringify(currentUser));
             }
             
-            addLog(`✅ ${type === 'sms' ? 'SMS' : 'Llamada'} a ${client.Nombre} exitoso`, 'success');
+            addLog(`✅ ${type === 'sms' ? 'SMS' : 'Llamada'} a ${client.Nombre} exitoso (${costPerMessage} crédito${costPerMessage > 1 ? 's' : ''})`, 'success');
             
+            // Para llamadas, solo actualizar el estado sin descontar más créditos
             if (type === 'call') {
               setTimeout(() => checkCallStatus(result.sid, stats), 5000);
             }
