@@ -684,17 +684,34 @@
         call: document.getElementById('callScript').value
       };
 
-      if (!template.name || !template.sms || !template.call) {
-        alert('Por favor completa todos los campos');
+      // Validar que al menos tenga nombre y un tipo de mensaje
+      if (!template.name) {
+        alert('Por favor ingresa el nombre de la plantilla');
+        return;
+      }
+
+      if (!template.company) {
+        alert('Por favor ingresa el nombre de la compañía');
+        return;
+      }
+
+      if (!template.sms && !template.call) {
+        alert('Por favor completa al menos un mensaje (SMS o Script de Llamada)');
         return;
       }
 
       templates.push(template);
       localStorage.setItem('templates', JSON.stringify(templates));
       loadTemplates();
-      addLog(`Plantilla "${template.name}" guardada`, 'success');
+      
+      // Mensaje personalizado según lo que se guardó
+      let savedTypes = [];
+      if (template.sms) savedTypes.push('SMS');
+      if (template.call) savedTypes.push('Llamadas');
+      addLog(`Plantilla "${template.name}" guardada (${savedTypes.join(' y ')})`, 'success');
       
       // Limpiar campos
+      document.getElementById('companyName').value = '';
       document.getElementById('templateName').value = '';
       document.getElementById('smsMessage').value = '';
       document.getElementById('callScript').value = '';
@@ -714,13 +731,19 @@
       });
 
       const list = document.getElementById('templatesList');
-      list.innerHTML = templates.map(t => `
+      list.innerHTML = templates.map(t => {
+        let preview = '';
+        if (t.sms) preview += `📱 SMS: ${t.sms.substring(0, 50)}...`;
+        if (t.call) preview += `${t.sms ? '<br>' : ''}📞 Llamada: ${t.call.substring(0, 50)}...`;
+        
+        return `
         <div style="background: white; padding: 15px; border-radius: 8px; margin-bottom: 10px;">
           <strong>${t.company} - ${t.name}</strong>
-          <p style="margin: 5px 0; color: #666;">SMS: ${t.sms.substring(0, 50)}...</p>
+          <p style="margin: 5px 0; color: #666;">${preview}</p>
           <button class="btn btn-danger" onclick="deleteTemplate(${t.id})" style="padding: 5px 10px; font-size: 0.9em;">🗑️ Eliminar</button>
         </div>
-      `).join('');
+      `;
+      }).join('');
     }
 
     function deleteTemplate(id) {
@@ -749,6 +772,18 @@
       }
 
       const template = templates.find(t => t.id == templateId);
+      
+      // Validar que la plantilla tenga el tipo correcto
+      if (type === 'sms' && !template.sms) {
+        alert('Esta plantilla no tiene mensaje SMS configurado');
+        return;
+      }
+      
+      if (type === 'call' && !template.call) {
+        alert('Esta plantilla no tiene script de llamada configurado');
+        return;
+      }
+      
       const costPerMessage = type === 'sms' ? 1 : 2;
       const totalCost = clientsData.length * costPerMessage;
 
