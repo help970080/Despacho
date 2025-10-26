@@ -517,7 +517,8 @@ app.post('/api/send-sms', async (req, res) => {
     const result = await client.messages.create({
       body: message,
       from: TWILIO_PHONE_SMS,
-      to: to
+      to: to,
+      statusCallback: `${BASE_URL}/api/sms-status?username=${encodeURIComponent(username)}`
     });
     
     // Descontar créditos
@@ -547,7 +548,7 @@ app.post('/api/make-call', async (req, res) => {
       twiml: twiml,
       from: TWILIO_PHONE_CALL,
       to: to,
-      statusCallback: `${BASE_URL}/api/call-status`,
+      statusCallback: `${BASE_URL}/api/call-status?username=${encodeURIComponent(username)}`,
       statusCallbackEvent: ['completed']
     });
     
@@ -564,9 +565,111 @@ app.post('/api/make-call', async (req, res) => {
 });
 
 app.post('/api/call-status', async (req, res) => {
-  const { CallStatus } = req.body;
-  console.log(`📊 Estado de llamada: ${CallStatus}`);
-  res.sendStatus(200);
+  try {
+    const { CallStatus, CallSid, To, CallDuration } = req.body;
+    const username = req.query.username;
+    
+    console.log(`📞 Llamada ${CallSid} a ${To}: ${CallStatus} (${CallDuration || 0}s) - Usuario: ${username}`);
+    
+    if (!username) {
+      console.error('❌ Username no proporcionado en webhook');
+      return res.sendStatus(200);
+    }
+    
+    // Actualizar estadísticas según el estado
+    const duration = parseInt(CallDuration) || 0;
+    
+    if (CallStatus === 'completed') {
+      // ✅ Llamada completada
+      await Stats.updateOne(
+        { username },
+        { 
+          $inc: { 
+            success: 1,
+            callAnswered: duration > 0 ? 1 : 0,
+            callNoAnswer: duration === 0 ? 1 : 0
+          },
+          lastUpdated: new Date()
+        },
+        { upsert: true }
+      );
+    } else if (CallStatus === 'busy') {
+      // 📵 Ocupado
+      await Stats.updateOne(
+        { username },
+        { 
+          $inc: { 
+            errors: 1,
+            callBusy: 1
+          },
+          lastUpdated: new Date()
+        },
+        { upsert: true }
+      );
+    } else if (CallStatus === 'failed' || CallStatus === 'no-answer' || CallStatus === 'canceled') {
+      // ❌ Falló, no contestó o cancelada
+      await Stats.updateOne(
+        { username },
+        { 
+          $inc: { 
+            errors: 1,
+            callRejected: 1
+          },
+          lastUpdated: new Date()
+        },
+        { upsert: true }
+      );
+    }
+    
+    res.sendStatus(200);
+  } catch (error) {
+    console.error('❌ Error en call-status:', error);
+    res.sendStatus(500);
+  }
+});
+
+// Webhook para estado de SMS
+app.post('/api/sms-status', async (req, res) => {
+  try {
+    const { MessageStatus, MessageSid, To, ErrorCode } = req.body;
+    const username = req.query.username;
+    
+    console.log(`📱 SMS ${MessageSid} a ${To}: ${MessageStatus} - Usuario: ${username}${ErrorCode ? ` (Error: ${ErrorCode})` : ''}`);
+    
+    if (!username) {
+      console.error('❌ Username no proporcionado en webhook');
+      return res.sendStatus(200);
+    }
+    
+    // Actualizar estadísticas según el estado
+    if (MessageStatus === 'delivered') {
+      // ✅ SMS entregado exitosamente
+      await Stats.updateOne(
+        { username },
+        { 
+          $inc: { success: 1 },
+          lastUpdated: new Date()
+        },
+        { upsert: true }
+      );
+    } else if (MessageStatus === 'failed' || MessageStatus === 'undelivered') {
+      // ❌ SMS falló o no fue entregado
+      await Stats.updateOne(
+        { username },
+        { 
+          $inc: { errors: 1 },
+          lastUpdated: new Date()
+        },
+        { upsert: true }
+      );
+    }
+    // Los estados 'sent', 'queued', 'sending' no se cuentan porque son intermedios
+    
+    res.sendStatus(200);
+  } catch (error) {
+    console.error('❌ Error en sms-status:', error);
+    res.sendStatus(500);
+  }
 });
 
 // ===================================
@@ -606,7 +709,8 @@ cron.schedule('* * * * *', async () => {
             await client.messages.create({
               body: message,
               from: TWILIO_PHONE_SMS,
-              to: clientDoc.cleanPhone
+              to: clientDoc.cleanPhone,
+              statusCallback: `${BASE_URL}/api/sms-status?username=${encodeURIComponent(campaign.username)}`
             });
           } else {
             const twiml = `<?xml version="1.0" encoding="UTF-8"?>
@@ -616,7 +720,9 @@ cron.schedule('* * * * *', async () => {
             await client.calls.create({
               twiml: twiml,
               from: TWILIO_PHONE_CALL,
-              to: clientDoc.cleanPhone
+              to: clientDoc.cleanPhone,
+              statusCallback: `${BASE_URL}/api/call-status?username=${encodeURIComponent(campaign.username)}`,
+              statusCallbackEvent: ['completed']
             });
           }
           
