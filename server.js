@@ -1,17 +1,27 @@
 const express = require('express');
 const twilio = require('twilio');
 const cors = require('cors');
+const path = require('path');
 require('dotenv').config();
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
+// 🌐 Servir archivos estáticos desde la carpeta 'public'
+app.use(express.static(path.join(__dirname, 'public')));
+
+// 🏠 Ruta principal para servir index.html
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
 // ✅ CREDENCIALES DE TWILIO
 const ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID;
 const AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN;
 const TWILIO_PHONE_SMS = process.env.TWILIO_PHONE_SMS;
 const TWILIO_PHONE_CALL = process.env.TWILIO_PHONE_CALL;
+const BASE_URL = process.env.BASE_URL || `http://localhost:${process.env.PORT || 3000}`;
 
 // Validar variables de entorno
 if (!ACCOUNT_SID || !AUTH_TOKEN || !TWILIO_PHONE_SMS || !TWILIO_PHONE_CALL) {
@@ -22,7 +32,7 @@ if (!ACCOUNT_SID || !AUTH_TOKEN || !TWILIO_PHONE_SMS || !TWILIO_PHONE_CALL) {
 
 const client = twilio(ACCOUNT_SID, AUTH_TOKEN);
 
-// Base de datos en memoria (para producción usar MongoDB, PostgreSQL, etc.)
+// Base de datos en memoria
 let campaignStats = {
   totalSent: 0,
   totalCalls: 0,
@@ -96,7 +106,7 @@ app.post('/api/make-call', async (req, res) => {
       twiml: twiml,
       from: TWILIO_PHONE_CALL,
       to: to,
-      statusCallback: `${process.env.BASE_URL || 'http://localhost:3000'}/api/call-status`,
+      statusCallback: `${BASE_URL}/api/call-status`,
       statusCallbackEvent: ['completed']
     });
     
@@ -170,7 +180,6 @@ app.get('/api/status/:sid', async (req, res) => {
   try {
     const { sid } = req.params;
     
-    // Intentar obtener como mensaje primero
     try {
       const message = await client.messages(sid).fetch();
       return res.json({
@@ -182,7 +191,6 @@ app.get('/api/status/:sid', async (req, res) => {
         dateCreated: message.dateCreated
       });
     } catch (e) {
-      // Si falla, intentar como llamada
       const call = await client.calls(sid).fetch();
       return res.json({
         success: true,
@@ -207,11 +215,18 @@ app.get('/api/test', (req, res) => {
   res.json({ 
     status: 'OK',
     message: '🚀 Servidor de cobranza Twilio funcionando correctamente',
+    environment: process.env.NODE_ENV || 'development',
+    base_url: BASE_URL,
     twilio_phone_sms: TWILIO_PHONE_SMS,
     twilio_phone_call: TWILIO_PHONE_CALL,
     account_configured: true,
     current_stats: campaignStats
   });
+});
+
+// 🏠 Ruta principal - Servir el frontend
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 // 🌐 Iniciar servidor
@@ -220,15 +235,16 @@ app.listen(PORT, () => {
   console.log('╔═══════════════════════════════════════════════════╗');
   console.log('🚀 SERVIDOR DE COBRANZA TWILIO INICIADO');
   console.log('╚═══════════════════════════════════════════════════╝');
-  console.log(`📡 URL: http://localhost:${PORT}`);
-  console.log(`📱 Número SMS: ${TWILIO_PHONE_SMS} (USA)`);
-  console.log(`📞 Número Llamadas: ${TWILIO_PHONE_CALL} (México)`);
+  console.log(`📡 URL: ${BASE_URL}`);
+  console.log(`📱 Número SMS: ${TWILIO_PHONE_SMS}`);
+  console.log(`📞 Número Llamadas: ${TWILIO_PHONE_CALL}`);
   console.log(`\n📋 Endpoints disponibles:`);
-  console.log(`   ✅ GET  http://localhost:${PORT}/api/test`);
-  console.log(`   📱 POST http://localhost:${PORT}/api/send-sms`);
-  console.log(`   📞 POST http://localhost:${PORT}/api/make-call`);
-  console.log(`   📊 GET  http://localhost:${PORT}/api/stats`);
-  console.log(`   🔍 GET  http://localhost:${PORT}/api/status/:sid`);
-  console.log(`   🔄 POST http://localhost:${PORT}/api/reset-stats`);
+  console.log(`   🏠 GET  ${BASE_URL}/`);
+  console.log(`   ✅ GET  ${BASE_URL}/api/test`);
+  console.log(`   📱 POST ${BASE_URL}/api/send-sms`);
+  console.log(`   📞 POST ${BASE_URL}/api/make-call`);
+  console.log(`   📊 GET  ${BASE_URL}/api/stats`);
+  console.log(`   🔍 GET  ${BASE_URL}/api/status/:sid`);
+  console.log(`   🔄 POST ${BASE_URL}/api/reset-stats`);
   console.log('═══════════════════════════════════════════════════\n');
 });
