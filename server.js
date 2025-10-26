@@ -326,19 +326,33 @@ app.post('/api/clients', async (req, res) => {
 app.post('/api/clients/bulk', async (req, res) => {
   try {
     const { username, clients } = req.body;
+    
+    if (!clients || clients.length === 0) {
+      return res.status(400).json({ success: false, error: 'No se proporcionaron clientes' });
+    }
+    
     const clientsToInsert = clients.map(c => ({
       username,
-      name: c.name,
-      phone: c.phone,
-      cleanPhone: c.cleanPhone,
-      debt: c.debt || '0',
-      company: c.company || '',
+      name: c.name || c.Nombre || '',
+      phone: c.phone || c.Telefono || '',
+      cleanPhone: c.cleanPhone || c.phone || c.Telefono || '',
+      debt: c.debt || c.Deuda || '0',
+      company: c.company || c.Compañia || '',
       status: 'pending'
     }));
     
     const insertedClients = await Client.insertMany(clientsToInsert);
-    res.json({ success: true, count: insertedClients.length });
+    
+    // Crear log de actividad
+    await ActivityLog.create({
+      username,
+      message: `${insertedClients.length} clientes cargados`,
+      type: 'success'
+    });
+    
+    res.json({ success: true, count: insertedClients.length, clients: insertedClients });
   } catch (error) {
+    console.error('Error en /api/clients/bulk:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
