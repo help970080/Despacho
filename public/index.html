@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sistema de Cobranza - Multitenancy</title>
+  <title>Sistema de Cobranza - MongoDB + Scheduler</title>
   <style>
     * {
       margin: 0;
@@ -27,7 +27,7 @@
       overflow: hidden;
     }
 
-    /* 🔐 PANTALLA DE LOGIN */
+    /* LOGIN */
     .login-screen {
       display: flex;
       justify-content: center;
@@ -135,16 +135,6 @@
       font-weight: 600;
     }
 
-    .tenant-indicator {
-      background: rgba(255,255,255,0.15);
-      padding: 8px 15px;
-      border-radius: 8px;
-      font-size: 0.9em;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
     .tabs {
       display: flex;
       background: #f8f9fa;
@@ -220,26 +210,16 @@
       resize: vertical;
     }
 
-    .variable-tags {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin-top: 10px;
+    .two-columns {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
     }
 
-    .variable-tag {
-      padding: 5px 12px;
-      background: #667eea;
-      color: white;
-      border-radius: 5px;
-      font-size: 0.85em;
-      cursor: pointer;
-      transition: all 0.3s;
-    }
-
-    .variable-tag:hover {
-      background: #5568d3;
-      transform: scale(1.05);
+    @media (max-width: 768px) {
+      .two-columns {
+        grid-template-columns: 1fr;
+      }
     }
 
     .btn {
@@ -286,6 +266,11 @@
       justify-content: center;
     }
 
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
     .stats-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -315,13 +300,6 @@
     .stat-label {
       color: #666;
       font-size: 0.9em;
-    }
-
-    .chart-container {
-      background: white;
-      padding: 20px;
-      border-radius: 10px;
-      margin-top: 20px;
     }
 
     .log-container {
@@ -382,108 +360,98 @@
       font-size: 0.9em;
     }
 
-    .two-columns {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 20px;
-    }
-
-    @media (max-width: 768px) {
-      .two-columns {
-        grid-template-columns: 1fr;
-      }
-    }
-
-    canvas {
-      max-width: 100%;
-    }
-
-    .file-input-wrapper {
-      position: relative;
-      overflow: hidden;
-      display: inline-block;
-    }
-
-    .file-input-wrapper input[type=file] {
-      position: absolute;
-      left: -9999px;
-    }
-
-    .file-input-label {
-      display: inline-block;
-      padding: 15px 30px;
-      background: #667eea;
-      color: white;
+    .campaign-card {
+      background: white;
+      padding: 20px;
       border-radius: 10px;
-      cursor: pointer;
-      font-size: 1em;
-      font-weight: 600;
+      margin-bottom: 15px;
+      border: 2px solid #e9ecef;
       transition: all 0.3s;
     }
 
-    .file-input-label:hover {
-      background: #5568d3;
-      transform: translateY(-2px);
+    .campaign-card:hover {
+      border-color: #667eea;
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
     }
 
-    .template-preview {
-      background: white;
-      padding: 15px;
-      border-radius: 8px;
-      margin-top: 15px;
-      border: 2px dashed #e9ecef;
+    .campaign-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: start;
+      margin-bottom: 15px;
     }
 
-    .template-preview h4 {
-      margin-bottom: 10px;
-      color: #667eea;
+    .campaign-title {
+      font-size: 1.2em;
+      font-weight: 600;
+      color: #333;
     }
 
-    .admin-only {
+    .campaign-status {
+      padding: 5px 12px;
+      border-radius: 15px;
+      font-size: 0.85em;
+      font-weight: 600;
+    }
+
+    .status-scheduled {
+      background: #dbeafe;
+      color: #1e40af;
+    }
+
+    .status-running {
       background: #fef3c7;
-      border-left: 4px solid #f59e0b;
+      color: #92400e;
+    }
+
+    .status-completed {
+      background: #d1fae5;
+      color: #065f46;
+    }
+
+    .status-cancelled {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .campaign-meta {
+      color: #666;
+      font-size: 0.9em;
+      margin-top: 10px;
+    }
+
+    .campaign-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 15px;
+    }
+
+    .datetime-input {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .info-banner {
+      background: #e0e7ff;
+      border-left: 4px solid #667eea;
       padding: 15px;
       border-radius: 8px;
       margin-bottom: 20px;
-    }
-
-    .user-table {
-      background: white;
-      border-radius: 10px;
-      overflow: hidden;
-      margin-top: 15px;
-    }
-
-    .user-row {
-      padding: 15px;
-      border-bottom: 1px solid #e9ecef;
       display: flex;
-      justify-content: space-between;
       align-items: center;
-    }
-
-    .user-row:last-child {
-      border-bottom: none;
-    }
-
-    .user-details {
-      flex: 1;
-    }
-
-    .user-name {
-      font-weight: 600;
-      color: #333;
-      margin-bottom: 5px;
-    }
-
-    .user-meta {
-      font-size: 0.9em;
-      color: #666;
-    }
-
-    .user-actions {
-      display: flex;
       gap: 10px;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 40px;
+      color: #999;
+    }
+
+    .empty-state-icon {
+      font-size: 3em;
+      margin-bottom: 15px;
     }
 
     .password-toggle {
@@ -506,28 +474,6 @@
       font-size: 1.2em;
     }
 
-    .empty-state {
-      text-align: center;
-      padding: 40px;
-      color: #999;
-    }
-
-    .empty-state-icon {
-      font-size: 3em;
-      margin-bottom: 15px;
-    }
-
-    .info-banner {
-      background: #e0e7ff;
-      border-left: 4px solid #667eea;
-      padding: 15px;
-      border-radius: 8px;
-      margin-bottom: 20px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
     .template-card {
       background: white;
       padding: 15px;
@@ -542,30 +488,26 @@
       box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
     }
 
-    .template-header {
+    .variable-tags {
       display: flex;
-      justify-content: space-between;
-      align-items: start;
-      margin-bottom: 10px;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 10px;
     }
 
-    .template-meta {
+    .variable-tag {
+      padding: 5px 12px;
+      background: #667eea;
+      color: white;
+      border-radius: 5px;
       font-size: 0.85em;
-      color: #666;
-      margin-top: 5px;
-    }
-
-    .admin-view-toggle {
-      background: rgba(255,255,255,0.2);
-      padding: 8px 15px;
-      border-radius: 8px;
-      font-size: 0.9em;
       cursor: pointer;
       transition: all 0.3s;
     }
 
-    .admin-view-toggle:hover {
-      background: rgba(255,255,255,0.3);
+    .variable-tag:hover {
+      background: #5568d3;
+      transform: scale(1.05);
     }
   </style>
 </head>
@@ -574,7 +516,7 @@
   <div class="login-screen" id="loginScreen">
     <div class="login-box">
       <h1>🔐 Sistema de Cobranza</h1>
-      <p>Ingresa tus credenciales para continuar</p>
+      <p>MongoDB + Programación Automática</p>
       
       <div class="login-error" id="loginError"></div>
       
@@ -600,10 +542,8 @@
     <div class="container">
       <div class="header">
         <div>
-          <h1>📱 Sistema de Cobranza</h1>
-          <div class="tenant-indicator" id="tenantIndicator">
-            🏢 Espacio Personal
-          </div>
+          <h1>📱 Sistema de Cobranza Pro</h1>
+          <p style="margin-top: 5px; opacity: 0.9;">MongoDB + Scheduler Automático</p>
         </div>
         <div class="user-info">
           <div>
@@ -617,31 +557,33 @@
 
       <div class="tabs">
         <button class="tab active" onclick="switchTab('campaign')">📊 Campañas</button>
+        <button class="tab" onclick="switchTab('scheduled')">📅 Programadas</button>
         <button class="tab" onclick="switchTab('templates')">📝 Plantillas</button>
+        <button class="tab" onclick="switchTab('clients')">👥 Clientes</button>
         <button class="tab" onclick="switchTab('stats')">📈 Estadísticas</button>
-        <button class="tab" onclick="switchTab('admin')" id="adminTab" style="display:none">⚙️ Administración</button>
+        <button class="tab" onclick="switchTab('admin')" id="adminTab" style="display:none">⚙️ Admin</button>
       </div>
 
       <!-- TAB: CAMPAÑAS -->
       <div class="tab-content active" id="campaign">
         <div class="info-banner">
-          <span style="font-size: 1.5em;">ℹ️</span>
+          <span style="font-size: 1.5em;">🚀</span>
           <div>
-            <strong>Espacio Personal:</strong> Tus campañas y datos son privados. Solo tú y los administradores pueden verlos.
+            <strong>Envío Inmediato:</strong> Ejecuta campañas de SMS o llamadas al instante.
           </div>
         </div>
 
         <div class="section">
           <h2>📂 Cargar Clientes</h2>
-          <div class="file-input-wrapper">
-            <input type="file" id="fileInput" accept=".csv,.xlsx,.xls">
-            <label for="fileInput" class="file-input-label">📄 Seleccionar Archivo CSV/Excel</label>
-          </div>
+          <input type="file" id="fileInput" accept=".csv,.xlsx,.xls" style="display:none">
+          <button class="btn btn-primary" onclick="document.getElementById('fileInput').click()">
+            📄 Seleccionar Archivo CSV/Excel
+          </button>
           <div id="fileName" style="margin-top: 10px; color: #666;"></div>
         </div>
 
         <div class="section">
-          <h2>🚀 Configurar Campaña</h2>
+          <h2>🚀 Enviar Campaña Ahora</h2>
           <div class="form-group">
             <label>Plantilla a usar:</label>
             <select id="templateSelect">
@@ -649,8 +591,12 @@
             </select>
           </div>
           <div class="two-columns">
-            <button class="btn btn-success" onclick="startCampaign('sms')" id="btnSMS" disabled>📱 Enviar SMS</button>
-            <button class="btn btn-warning" onclick="startCampaign('call')" id="btnCall" disabled>📞 Hacer Llamadas</button>
+            <button class="btn btn-success" onclick="startCampaign('sms')" id="btnSMS" disabled>
+              📱 Enviar SMS Ahora
+            </button>
+            <button class="btn btn-warning" onclick="startCampaign('call')" id="btnCall" disabled>
+              📞 Hacer Llamadas Ahora
+            </button>
           </div>
           <div class="progress-bar" id="progressBar" style="display: none;">
             <div class="progress-fill" id="progressFill">0%</div>
@@ -658,22 +604,57 @@
         </div>
 
         <div class="section">
-          <h2>📊 Registro de Actividad</h2>
-          <div class="log-container" id="logContainer">
-            <div class="log-entry log-info">ℹ️ Sistema iniciado - Espacio personal activo</div>
+          <h2>📋 Registro de Actividad</h2>
+          <div class="log-container" id="logContainer"></div>
+        </div>
+      </div>
+
+      <!-- TAB: CAMPAÑAS PROGRAMADAS -->
+      <div class="tab-content" id="scheduled">
+        <div class="info-banner">
+          <span style="font-size: 1.5em;">📅</span>
+          <div>
+            <strong>Programación Automática:</strong> El sistema enviará tus campañas en la fecha y hora programadas.
           </div>
+        </div>
+
+        <div class="section">
+          <h2>⏰ Programar Nueva Campaña</h2>
+          <div class="form-group">
+            <label>Nombre de la Campaña:</label>
+            <input type="text" id="campaignName" placeholder="Ej: Recordatorio Pago Enero">
+          </div>
+          <div class="form-group">
+            <label>Plantilla:</label>
+            <select id="scheduleTemplateSelect"></select>
+          </div>
+          <div class="form-group">
+            <label>Tipo:</label>
+            <select id="campaignType">
+              <option value="sms">📱 SMS</option>
+              <option value="call">📞 Llamada</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Fecha y Hora de Envío:</label>
+            <div class="datetime-input">
+              <input type="date" id="scheduleDate" required>
+              <input type="time" id="scheduleTime" required>
+            </div>
+          </div>
+          <button class="btn btn-primary btn-full" onclick="scheduleCampaign()">
+            ⏰ Programar Campaña
+          </button>
+        </div>
+
+        <div class="section">
+          <h2>📋 Campañas Programadas</h2>
+          <div id="scheduledList"></div>
         </div>
       </div>
 
       <!-- TAB: PLANTILLAS -->
       <div class="tab-content" id="templates">
-        <div class="info-banner">
-          <span style="font-size: 1.5em;">📝</span>
-          <div>
-            <strong>Plantillas Personales:</strong> Crea y administra tus propias plantillas. No se mezclarán con las de otros usuarios.
-          </div>
-        </div>
-
         <div class="section">
           <h2>📝 Crear Nueva Plantilla</h2>
           <div class="form-group">
@@ -682,7 +663,7 @@
           </div>
           <div class="form-group">
             <label>Nombre de la Plantilla:</label>
-            <input type="text" id="templateName" placeholder="Ej: Recordatorio Pago Vencido">
+            <input type="text" id="templateName" placeholder="Ej: Recordatorio Pago">
           </div>
           <div class="form-group">
             <label>Mensaje SMS:</label>
@@ -696,7 +677,7 @@
           </div>
           <div class="form-group">
             <label>Script de Llamada:</label>
-            <textarea id="callScript" placeholder="Escribe el script para la llamada..."></textarea>
+            <textarea id="callScript" placeholder="Escribe el script..."></textarea>
             <div class="variable-tags">
               <span class="variable-tag" onclick="insertVariable('callScript', '{Nombre}')">👤 {Nombre}</span>
               <span class="variable-tag" onclick="insertVariable('callScript', '{Telefono}')">📱 {Telefono}</span>
@@ -713,15 +694,16 @@
         </div>
       </div>
 
+      <!-- TAB: CLIENTES -->
+      <div class="tab-content" id="clients">
+        <div class="section">
+          <h2>👥 Gestión de Clientes</h2>
+          <div id="clientsList"></div>
+        </div>
+      </div>
+
       <!-- TAB: ESTADÍSTICAS -->
       <div class="tab-content" id="stats">
-        <div class="info-banner">
-          <span style="font-size: 1.5em;">📈</span>
-          <div>
-            <strong>Estadísticas Personales:</strong> Estas métricas reflejan únicamente tus campañas.
-          </div>
-        </div>
-
         <div class="stats-grid">
           <div class="stat-card">
             <div class="stat-number total" id="statTotal">0</div>
@@ -740,68 +722,31 @@
             <div class="stat-label">Pendientes</div>
           </div>
         </div>
-
-        <div class="chart-container">
-          <h2>📊 Gráfica de Resultados</h2>
-          <canvas id="statsChart"></canvas>
-        </div>
-
-        <div class="section">
-          <h2>📞 Detalle de Llamadas</h2>
-          <div class="stats-grid">
-            <div class="stat-card">
-              <div class="stat-number success" id="callAnswered">0</div>
-              <div class="stat-label">Contestadas</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-number error" id="callRejected">0</div>
-              <div class="stat-label">Rechazadas</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-number pending" id="callBusy">0</div>
-              <div class="stat-label">Ocupado</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-number" id="callNoAnswer">0</div>
-              <div class="stat-label">No Contestó</div>
-            </div>
-          </div>
-        </div>
       </div>
 
-      <!-- TAB: ADMINISTRACIÓN -->
+      <!-- TAB: ADMIN -->
       <div class="tab-content" id="admin">
-        <div class="admin-only">
-          <strong>⚠️ Panel de Administrador</strong> - Tienes acceso completo a todos los usuarios y sus datos.
-        </div>
-
-        <!-- Vista Global de Admin -->
-        <div class="section" id="adminGlobalView">
-          <h2>🌐 Vista Global del Sistema</h2>
-          <div class="admin-view-toggle" onclick="toggleAdminView()">
-            <span id="adminViewText">👁️ Ver todas las plantillas de usuarios</span>
-          </div>
-          <div id="allTemplatesView" style="display:none; margin-top: 20px;"></div>
-          <div id="allStatsView" style="display:none; margin-top: 20px;"></div>
-        </div>
-
         <div class="section">
           <h2>👥 Crear Nuevo Usuario</h2>
           <div class="form-group">
-            <label>Nombre de Usuario:</label>
-            <input type="text" id="newUserName" placeholder="Nombre del usuario">
+            <label>Nombre:</label>
+            <input type="text" id="newUserName">
           </div>
           <div class="form-group">
             <label>Email:</label>
-            <input type="email" id="newUserEmail" placeholder="email@ejemplo.com">
+            <input type="email" id="newUserEmail">
+          </div>
+          <div class="form-group">
+            <label>Usuario:</label>
+            <input type="text" id="newUsername">
           </div>
           <div class="form-group password-toggle">
             <label>Contraseña:</label>
-            <input type="password" id="newUserPassword" placeholder="Contraseña segura">
+            <input type="password" id="newUserPassword">
             <button type="button" class="password-toggle-btn" onclick="togglePassword('newUserPassword')">👁️</button>
           </div>
           <div class="form-group">
-            <label>Créditos Iniciales:</label>
+            <label>Créditos:</label>
             <input type="number" id="newUserCredits" value="100">
           </div>
           <div class="form-group">
@@ -816,20 +761,7 @@
 
         <div class="section">
           <h2>👤 Lista de Usuarios</h2>
-          <div class="user-table" id="usersList"></div>
-        </div>
-
-        <div class="section">
-          <h2>💳 Asignar Créditos</h2>
-          <div class="form-group">
-            <label>Usuario:</label>
-            <select id="creditUserId"></select>
-          </div>
-          <div class="form-group">
-            <label>Cantidad de Créditos:</label>
-            <input type="number" id="creditAmount" value="50">
-          </div>
-          <button class="btn btn-success" onclick="assignCredits()">💰 Asignar Créditos</button>
+          <div id="usersList"></div>
         </div>
       </div>
     </div>
@@ -837,80 +769,40 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
   <script>
-    // ⚙️ CONFIGURACIÓN DEL SISTEMA
-    // ========================================
-    // Puedes modificar estos valores según tus necesidades:
-    
-    // 💳 COSTOS POR OPERACIÓN (en créditos)
-    const COST_SMS = 1;      // Créditos por cada SMS
-    const COST_CALL = 1;     // Créditos por cada llamada (cambiado de 2 a 1)
-    
-    // ========================================
-    
-    // 🌐 API Base URL
     const API_BASE = window.location.hostname === 'localhost' 
       ? 'http://localhost:3000/api' 
       : `${window.location.origin}/api`;
 
-    let clientsData = [];
     let currentUser = null;
-    let users = [];
-    let adminViewExpanded = false;
+    let clientsData = [];
+    let loadedClients = [];
 
-    // 🏢 SISTEMA MULTITENANCY - Datos por usuario
-    const STORAGE_KEYS = {
-      users: 'system_users',
-      templates: (username) => `templates_${username}`,
-      stats: (username) => `stats_${username}`,
-      logs: (username) => `logs_${username}`
-    };
-
-    // 🔐 SISTEMA DE AUTENTICACIÓN
-    function initializeSystem() {
-      const savedUsers = localStorage.getItem(STORAGE_KEYS.users);
-      if (savedUsers) {
-        users = JSON.parse(savedUsers);
-      } else {
-        users = [{
-          id: 1,
-          username: 'admin',
-          password: 'admin123',
-          name: 'SuperAdministrador',
-          email: 'admin@sistema.com',
-          credits: 1000,
-          role: 'admin',
-          createdAt: new Date().toISOString()
-        }];
-        saveUsers();
-        console.log('⚠️ Usuario admin creado. Usuario: admin | Contraseña: admin123');
-      }
-
-      const sessionUser = sessionStorage.getItem('current_user');
-      if (sessionUser) {
-        currentUser = JSON.parse(sessionUser);
-        showMainScreen();
-      } else {
-        showLoginScreen();
-      }
-    }
-
-    function handleLogin(event) {
+    // 🔐 AUTENTICACIÓN
+    async function handleLogin(event) {
       event.preventDefault();
       
       const username = document.getElementById('loginUsername').value.trim();
       const password = document.getElementById('loginPassword').value;
       
-      const user = users.find(u => u.username === username && u.password === password);
-      
-      if (user) {
-        currentUser = user;
-        sessionStorage.setItem('current_user', JSON.stringify(user));
-        showMainScreen();
-        addLog(`✅ Sesión iniciada: ${user.name}`, 'success');
-      } else {
-        showLoginError('Usuario o contraseña incorrectos');
+      try {
+        const response = await fetch(`${API_BASE}/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          currentUser = data.user;
+          sessionStorage.setItem('current_user', JSON.stringify(currentUser));
+          showMainScreen();
+        } else {
+          showLoginError(data.error);
+        }
+      } catch (error) {
+        showLoginError('Error de conexión');
       }
     }
 
@@ -918,51 +810,34 @@
       const errorDiv = document.getElementById('loginError');
       errorDiv.textContent = message;
       errorDiv.style.display = 'block';
-      setTimeout(() => {
-        errorDiv.style.display = 'none';
-      }, 3000);
-    }
-
-    function showLoginScreen() {
-      document.getElementById('loginScreen').style.display = 'flex';
-      document.getElementById('mainScreen').style.display = 'none';
+      setTimeout(() => errorDiv.style.display = 'none', 3000);
     }
 
     function showMainScreen() {
       document.getElementById('loginScreen').style.display = 'none';
       document.getElementById('mainScreen').style.display = 'block';
-      
-      updateTenantIndicator();
-      loadUserTemplates();
-      loadUsers();
       updateUserInfo();
-      loadUserStats();
+      loadTemplates();
+      loadScheduledCampaigns();
+      loadStats();
+      loadLogs();
+      loadClients();
       
       if (currentUser.role === 'admin') {
         document.getElementById('adminTab').style.display = 'block';
-      }
-      
-      initChart();
-      testConnection();
-    }
-
-    function updateTenantIndicator() {
-      const indicator = document.getElementById('tenantIndicator');
-      if (currentUser.role === 'admin') {
-        indicator.innerHTML = '👑 Vista Administrador - Espacio Personal';
-      } else {
-        indicator.innerHTML = `🏢 Espacio de ${currentUser.name}`;
+        loadUsers();
       }
     }
 
     function logout() {
-      if (confirm('¿Cerrar sesión?')) {
-        sessionStorage.removeItem('current_user');
-        currentUser = null;
-        showLoginScreen();
-        document.getElementById('loginUsername').value = '';
-        document.getElementById('loginPassword').value = '';
-      }
+      sessionStorage.removeItem('current_user');
+      location.reload();
+    }
+
+    function updateUserInfo() {
+      document.getElementById('userName').textContent = currentUser.name;
+      document.getElementById('userRole').textContent = currentUser.role === 'admin' ? '👑 Admin' : '👤 Usuario';
+      document.getElementById('userCredits').textContent = currentUser.credits;
     }
 
     function togglePassword(fieldId) {
@@ -970,128 +845,107 @@
       field.type = field.type === 'password' ? 'text' : 'password';
     }
 
-    function saveUsers() {
-      localStorage.setItem(STORAGE_KEYS.users, JSON.stringify(users));
-    }
-
-    // 📝 PLANTILLAS - MULTITENANCY
-    function getUserTemplates() {
-      const key = STORAGE_KEYS.templates(currentUser.username);
-      const saved = localStorage.getItem(key);
-      return saved ? JSON.parse(saved) : [];
-    }
-
-    function saveUserTemplates(templates) {
-      const key = STORAGE_KEYS.templates(currentUser.username);
-      localStorage.setItem(key, JSON.stringify(templates));
-    }
-
-    function getAllTemplates() {
-      const allTemplates = [];
-      users.forEach(user => {
-        const key = STORAGE_KEYS.templates(user.username);
-        const userTemplates = localStorage.getItem(key);
-        if (userTemplates) {
-          const templates = JSON.parse(userTemplates);
-          templates.forEach(t => {
-            allTemplates.push({
-              ...t,
-              ownerUsername: user.username,
-              ownerName: user.name
-            });
-          });
-        }
-      });
-      return allTemplates;
-    }
-
-    function loadUserTemplates() {
-      const templates = getUserTemplates();
+    function switchTab(tabName) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      event.target.classList.add('active');
+      document.getElementById(tabName).classList.add('active');
       
-      const select = document.getElementById('templateSelect');
-      select.innerHTML = '<option value="">Seleccionar plantilla...</option>';
-      templates.forEach(t => {
-        const option = document.createElement('option');
-        option.value = t.id;
-        option.textContent = `${t.company} - ${t.name}`;
-        select.appendChild(option);
-      });
+      if (tabName === 'scheduled') loadScheduledCampaigns();
+      if (tabName === 'clients') loadClients();
+      if (tabName === 'stats') loadStats();
+    }
 
-      const list = document.getElementById('templatesList');
-      if (templates.length === 0) {
-        list.innerHTML = `
-          <div class="empty-state">
-            <div class="empty-state-icon">📝</div>
-            <p>No tienes plantillas guardadas</p>
-            <p style="font-size: 0.9em; margin-top: 5px;">Crea tu primera plantilla arriba</p>
-          </div>
-        `;
-      } else {
-        list.innerHTML = templates.map(t => {
-          let preview = '';
-          if (t.sms) preview += `📱 SMS: ${t.sms.substring(0, 50)}...`;
-          if (t.call) preview += `${t.sms ? '<br>' : ''}📞 Llamada: ${t.call.substring(0, 50)}...`;
+    // 📝 PLANTILLAS
+    async function loadTemplates() {
+      try {
+        const response = await fetch(`${API_BASE}/templates/${currentUser.username}`);
+        const data = await response.json();
+        
+        if (data.success) {
+          const templates = data.templates;
           
-          return `
-          <div class="template-card">
-            <div class="template-header">
-              <div>
-                <strong>${t.company} - ${t.name}</strong>
-                <div class="template-meta">Creada el ${new Date(t.createdAt || Date.now()).toLocaleDateString()}</div>
+          // Actualizar selectores
+          updateTemplateSelects(templates);
+          
+          // Actualizar lista
+          const list = document.getElementById('templatesList');
+          if (templates.length === 0) {
+            list.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📝</div><p>No tienes plantillas</p></div>';
+          } else {
+            list.innerHTML = templates.map(t => `
+              <div class="template-card">
+                <div style="display: flex; justify-content: space-between; align-items: start;">
+                  <div>
+                    <strong>${t.company} - ${t.name}</strong>
+                    <div style="color: #666; font-size: 0.9em; margin-top: 5px;">
+                      ${t.smsMessage ? '📱 SMS configurado' : ''} 
+                      ${t.callScript ? '📞 Llamada configurada' : ''}
+                    </div>
+                  </div>
+                  <button class="btn btn-danger" onclick="deleteTemplate('${t._id}')" style="padding: 5px 10px;">🗑️</button>
+                </div>
               </div>
-              <button class="btn btn-danger" onclick="deleteTemplate(${t.id})" style="padding: 5px 10px; font-size: 0.9em;">🗑️</button>
-            </div>
-            <p style="margin: 5px 0; color: #666; font-size: 0.9em;">${preview}</p>
-          </div>
-        `;
-        }).join('');
+            `).join('');
+          }
+        }
+      } catch (error) {
+        console.error('Error cargando plantillas:', error);
       }
     }
 
-    function saveTemplate() {
+    function updateTemplateSelects(templates) {
+      const selects = ['templateSelect', 'scheduleTemplateSelect'];
+      selects.forEach(selectId => {
+        const select = document.getElementById(selectId);
+        select.innerHTML = '<option value="">Seleccionar...</option>' + 
+          templates.map(t => `<option value="${t._id}">${t.company} - ${t.name}</option>`).join('');
+      });
+    }
+
+    async function saveTemplate() {
       const template = {
-        id: Date.now(),
+        username: currentUser.username,
         company: document.getElementById('companyName').value,
         name: document.getElementById('templateName').value,
-        sms: document.getElementById('smsMessage').value,
-        call: document.getElementById('callScript').value,
-        createdBy: currentUser.username,
-        createdAt: new Date().toISOString()
+        smsMessage: document.getElementById('smsMessage').value,
+        callScript: document.getElementById('callScript').value
       };
 
       if (!template.name || !template.company) {
-        alert('Por favor completa el nombre de la plantilla y la compañía');
+        alert('Completa nombre y compañía');
         return;
       }
 
-      if (!template.sms && !template.call) {
-        alert('Por favor completa al menos un mensaje (SMS o Script de Llamada)');
-        return;
+      try {
+        const response = await fetch(`${API_BASE}/templates`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(template)
+        });
+        
+        if ((await response.json()).success) {
+          loadTemplates();
+          addLog(`Plantilla "${template.name}" creada`, 'success');
+          document.getElementById('companyName').value = '';
+          document.getElementById('templateName').value = '';
+          document.getElementById('smsMessage').value = '';
+          document.getElementById('callScript').value = '';
+        }
+      } catch (error) {
+        addLog('Error guardando plantilla', 'error');
       }
-
-      const templates = getUserTemplates();
-      templates.push(template);
-      saveUserTemplates(templates);
-      loadUserTemplates();
-      
-      let savedTypes = [];
-      if (template.sms) savedTypes.push('SMS');
-      if (template.call) savedTypes.push('Llamadas');
-      addLog(`Plantilla "${template.name}" guardada (${savedTypes.join(' y ')})`, 'success');
-      
-      document.getElementById('companyName').value = '';
-      document.getElementById('templateName').value = '';
-      document.getElementById('smsMessage').value = '';
-      document.getElementById('callScript').value = '';
     }
 
-    function deleteTemplate(id) {
-      if (confirm('¿Eliminar esta plantilla?')) {
-        const templates = getUserTemplates();
-        const filtered = templates.filter(t => t.id !== id);
-        saveUserTemplates(filtered);
-        loadUserTemplates();
+    async function deleteTemplate(id) {
+      if (!confirm('¿Eliminar plantilla?')) return;
+      
+      try {
+        await fetch(`${API_BASE}/templates/${id}`, { method: 'DELETE' });
+        loadTemplates();
         addLog('Plantilla eliminada', 'info');
+      } catch (error) {
+        console.error('Error:', error);
       }
     }
 
@@ -1099,254 +953,16 @@
       const field = document.getElementById(fieldId);
       const start = field.selectionStart;
       const end = field.selectionEnd;
-      const text = field.value;
-      field.value = text.substring(0, start) + variable + text.substring(end);
+      field.value = field.value.substring(0, start) + variable + field.value.substring(end);
       field.focus();
     }
 
-    function replaceVariables(text, client) {
-      return text
-        .replace(/\{Nombre\}/g, client.Nombre)
-        .replace(/\{Telefono\}/g, client.Telefono)
-        .replace(/\{Deuda\}/g, client.Deuda)
-        .replace(/\{Compañia\}/g, client.Compañia);
-    }
-
-    // 📊 ESTADÍSTICAS - MULTITENANCY
-    function getUserStats() {
-      const key = STORAGE_KEYS.stats(currentUser.username);
-      const saved = localStorage.getItem(key);
-      return saved ? JSON.parse(saved) : {
-        total: 0,
-        success: 0,
-        errors: 0,
-        pending: 0,
-        callAnswered: 0,
-        callRejected: 0,
-        callBusy: 0,
-        callNoAnswer: 0
-      };
-    }
-
-    function saveUserStats(stats) {
-      const key = STORAGE_KEYS.stats(currentUser.username);
-      localStorage.setItem(key, JSON.stringify(stats));
-    }
-
-    function loadUserStats() {
-      const stats = getUserStats();
-      updateStatsDisplay(stats);
-      updateChart(stats);
-    }
-
-    function updateStatsDisplay(stats) {
-      document.getElementById('statTotal').textContent = stats.total;
-      document.getElementById('statSuccess').textContent = stats.success;
-      document.getElementById('statErrors').textContent = stats.errors;
-      document.getElementById('statPending').textContent = stats.pending;
-      document.getElementById('callAnswered').textContent = stats.callAnswered;
-      document.getElementById('callRejected').textContent = stats.callRejected;
-      document.getElementById('callBusy').textContent = stats.callBusy;
-      document.getElementById('callNoAnswer').textContent = stats.callNoAnswer;
-    }
-
-    // 📋 LOGS - MULTITENANCY
-    function getUserLogs() {
-      const key = STORAGE_KEYS.logs(currentUser.username);
-      const saved = localStorage.getItem(key);
-      return saved ? JSON.parse(saved) : [];
-    }
-
-    function saveUserLogs(logs) {
-      const key = STORAGE_KEYS.logs(currentUser.username);
-      localStorage.setItem(key, JSON.stringify(logs));
-    }
-
-    function addLog(message, type = 'info') {
-      const log = document.getElementById('logContainer');
-      const entry = document.createElement('div');
-      entry.className = `log-entry log-${type}`;
-      const timestamp = new Date().toLocaleTimeString();
-      entry.textContent = `[${timestamp}] ${message}`;
-      log.insertBefore(entry, log.firstChild);
-      
-      // Guardar en localStorage
-      const logs = getUserLogs();
-      logs.unshift({ message, type, timestamp: new Date().toISOString() });
-      if (logs.length > 50) logs.pop();
-      saveUserLogs(logs);
-      
-      if (log.children.length > 50) {
-        log.removeChild(log.lastChild);
-      }
-    }
-
-    function loadUserLogs() {
-      const logs = getUserLogs();
-      const container = document.getElementById('logContainer');
-      container.innerHTML = '';
-      
-      logs.forEach(logEntry => {
-        const entry = document.createElement('div');
-        entry.className = `log-entry log-${logEntry.type}`;
-        const time = new Date(logEntry.timestamp).toLocaleTimeString();
-        entry.textContent = `[${time}] ${logEntry.message}`;
-        container.appendChild(entry);
-      });
-      
-      if (logs.length === 0) {
-        container.innerHTML = '<div class="log-entry log-info">ℹ️ Sistema iniciado - Espacio personal activo</div>';
-      }
-    }
-
-    // 🚀 CAMPAÑAS
-    async function startCampaign(type) {
-      const templateId = document.getElementById('templateSelect').value;
-      if (!templateId) {
-        alert('Selecciona una plantilla');
-        return;
-      }
-
-      const templates = getUserTemplates();
-      const template = templates.find(t => t.id == templateId);
-      
-      if (type === 'sms' && !template.sms) {
-        alert('Esta plantilla no tiene mensaje SMS configurado');
-        return;
-      }
-      
-      if (type === 'call' && !template.call) {
-        alert('Esta plantilla no tiene script de llamada configurado');
-        return;
-      }
-      
-      // 💳 CONFIGURACIÓN DE COSTOS
-      // Puedes ajustar estos valores según tus necesidades
-      const COST_SMS = 1;      // Créditos por SMS
-      const COST_CALL = 1;     // Créditos por llamada (cambiado a 1)
-      
-      const costPerMessage = type === 'sms' ? COST_SMS : COST_CALL;
-      const totalCost = clientsData.length * costPerMessage;
-
-      if (currentUser.credits < totalCost) {
-        alert(`❌ Créditos insuficientes.\n\nNecesitas: ${totalCost} créditos\nTienes: ${currentUser.credits} créditos\nFaltan: ${totalCost - currentUser.credits} créditos`);
-        return;
-      }
-
-      const costDetails = type === 'sms' 
-        ? `📱 ${clientsData.length} SMS × 1 crédito = ${totalCost} créditos`
-        : `📞 ${clientsData.length} llamadas × 2 créditos = ${totalCost} créditos`;
-
-      if (!confirm(`🚀 Confirmar Campaña\n\n${costDetails}\n\nCréditos disponibles: ${currentUser.credits}\nCréditos después: ${currentUser.credits - totalCost}\n\n¿Continuar?`)) return;
-
-      document.getElementById('btnSMS').disabled = true;
-      document.getElementById('btnCall').disabled = true;
-      document.getElementById('progressBar').style.display = 'block';
-
-      const stats = getUserStats();
-      stats.total += clientsData.length;
-      stats.pending = clientsData.length;
-      saveUserStats(stats);
-      updateStatsDisplay(stats);
-
-      for (let i = 0; i < clientsData.length; i++) {
-        const client = clientsData[i];
-        const progress = Math.round(((i + 1) / clientsData.length) * 100);
-        document.getElementById('progressFill').style.width = `${progress}%`;
-        document.getElementById('progressFill').textContent = `${progress}%`;
-
-        try {
-          let result;
-          if (type === 'sms') {
-            const message = replaceVariables(template.sms, client);
-            result = await sendSMS(client.cleanPhone, message);
-          } else {
-            const script = replaceVariables(template.call, client);
-            result = await makeCall(client.cleanPhone, script);
-          }
-
-          if (result.success) {
-            stats.success++;
-            stats.pending--;
-            
-            // Descontar créditos SOLO UNA VEZ por mensaje/llamada
-            currentUser.credits -= costPerMessage;
-            
-            const userIndex = users.findIndex(u => u.username === currentUser.username);
-            if (userIndex !== -1) {
-              users[userIndex].credits = currentUser.credits;
-              saveUsers();
-              sessionStorage.setItem('current_user', JSON.stringify(currentUser));
-            }
-            
-            addLog(`✅ ${type === 'sms' ? 'SMS' : 'Llamada'} a ${client.Nombre} exitoso (${costPerMessage} crédito${costPerMessage > 1 ? 's' : ''})`, 'success');
-            
-            // Para llamadas, solo actualizar el estado sin descontar más créditos
-            if (type === 'call') {
-              setTimeout(() => checkCallStatus(result.sid, stats), 5000);
-            }
-          } else {
-            stats.errors++;
-            stats.pending--;
-            addLog(`❌ Error con ${client.Nombre}: ${result.error}`, 'error');
-          }
-        } catch (error) {
-          stats.errors++;
-          stats.pending--;
-          addLog(`❌ Error: ${error.message}`, 'error');
-        }
-
-        saveUserStats(stats);
-        updateStatsDisplay(stats);
-        updateUserInfo();
-        updateChart(stats);
-        await new Promise(resolve => setTimeout(resolve, type === 'sms' ? 1000 : 2000));
-      }
-
-      document.getElementById('progressBar').style.display = 'none';
-      document.getElementById('btnSMS').disabled = false;
-      document.getElementById('btnCall').disabled = false;
-      addLog(`📊 Campaña completada: ${stats.success} exitosos, ${stats.errors} errores`, 'info');
-    }
-
-    async function sendSMS(to, message) {
-      const response = await fetch(`${API_BASE}/send-sms`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ to, message })
-      });
-      return await response.json();
-    }
-
-    async function makeCall(to, script) {
-      const response = await fetch(`${API_BASE}/make-call`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ to, script })
-      });
-      return await response.json();
-    }
-
-    function checkCallStatus(sid, stats) {
-      const statuses = ['completed', 'no-answer', 'busy', 'failed'];
-      const status = statuses[Math.floor(Math.random() * statuses.length)];
-      
-      if (status === 'completed') stats.callAnswered++;
-      else if (status === 'no-answer') stats.callNoAnswer++;
-      else if (status === 'busy') stats.callBusy++;
-      else stats.callRejected++;
-      
-      saveUserStats(stats);
-      updateStatsDisplay(stats);
-    }
-
-    // 📂 CARGAR CLIENTES
+    // 📂 CLIENTES
     document.getElementById('fileInput').addEventListener('change', async (e) => {
       const file = e.target.files[0];
       if (!file) return;
 
       document.getElementById('fileName').textContent = `Cargando: ${file.name}...`;
-      addLog(`Cargando archivo: ${file.name}`, 'info');
 
       try {
         const ext = file.name.split('.').pop().toLowerCase();
@@ -1369,7 +985,7 @@
       }
     });
 
-    function processClients(data, filename) {
+    async function processClients(data, filename) {
       const cleanPhone = (phone) => {
         if (!phone) return null;
         const cleaned = phone.toString().replace(/\D/g, '');
@@ -1386,282 +1002,437 @@
         Compañia: document.getElementById('companyName').value || 'Compañía'
       })).filter(c => c.cleanPhone);
 
-      document.getElementById('fileName').textContent = `✅ ${clientsData.length} clientes cargados desde ${filename}`;
-      document.getElementById('btnSMS').disabled = clientsData.length === 0;
-      document.getElementById('btnCall').disabled = clientsData.length === 0;
-      addLog(`${clientsData.length} clientes válidos cargados`, 'success');
-    }
-
-    // 🎨 UI Updates
-    function updateUserInfo() {
-      document.getElementById('userName').textContent = currentUser.name;
-      document.getElementById('userRole').textContent = currentUser.role === 'admin' ? '👑 Admin' : '👤 Usuario';
-      document.getElementById('userCredits').textContent = currentUser.credits;
-    }
-
-    function switchTab(tabName) {
-      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-      event.target.classList.add('active');
-      document.getElementById(tabName).classList.add('active');
-      
-      // Recargar logs al cambiar a campaña
-      if (tabName === 'campaign') {
-        loadUserLogs();
+      // Guardar en BD
+      try {
+        await fetch(`${API_BASE}/clients/bulk`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: currentUser.username, clients: clientsData })
+        });
+      } catch (error) {
+        console.error('Error guardando clientes:', error);
       }
+
+      document.getElementById('fileName').textContent = `✅ ${clientsData.length} clientes cargados`;
+      document.getElementById('btnSMS').disabled = false;
+      document.getElementById('btnCall').disabled = false;
+      addLog(`${clientsData.length} clientes válidos cargados`, 'success');
+      loadClients();
     }
 
-    // 📊 GRÁFICAS
-    let chart;
-    function initChart() {
-      const ctx = document.getElementById('statsChart').getContext('2d');
-      chart = new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-          labels: ['Exitosos', 'Errores', 'Pendientes'],
-          datasets: [{
-            data: [0, 0, 0],
-            backgroundColor: ['#10b981', '#ef4444', '#f59e0b']
-          }]
-        },
-        options: {
-          responsive: true,
-          plugins: {
-            legend: { position: 'bottom' }
+    async function loadClients() {
+      try {
+        const response = await fetch(`${API_BASE}/clients/${currentUser.username}`);
+        const data = await response.json();
+        
+        if (data.success) {
+          loadedClients = data.clients;
+          const list = document.getElementById('clientsList');
+          
+          if (loadedClients.length === 0) {
+            list.innerHTML = '<div class="empty-state"><div class="empty-state-icon">👥</div><p>No hay clientes cargados</p></div>';
+          } else {
+            list.innerHTML = `
+              <div style="background: white; border-radius: 10px; overflow: hidden;">
+                ${loadedClients.map(c => `
+                  <div style="padding: 15px; border-bottom: 1px solid #e9ecef;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                      <div>
+                        <strong>${c.name}</strong>
+                        <div style="color: #666; font-size: 0.9em;">
+                          📱 ${c.phone} • 💰 ${c.debt} • Estado: ${c.status}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            `;
           }
         }
-      });
-    }
-
-    function updateChart(stats) {
-      if (chart) {
-        chart.data.datasets[0].data = [
-          stats.success,
-          stats.errors,
-          stats.pending
-        ];
-        chart.update();
+      } catch (error) {
+        console.error('Error cargando clientes:', error);
       }
     }
 
-    // 👑 FUNCIONES DE ADMINISTRADOR
-    function toggleAdminView() {
-      adminViewExpanded = !adminViewExpanded;
-      const viewText = document.getElementById('adminViewText');
-      const allTemplatesView = document.getElementById('allTemplatesView');
-      
-      if (adminViewExpanded) {
-        viewText.textContent = '🔽 Ocultar vista global';
-        loadAllTemplatesView();
-        loadAllStatsView();
-        allTemplatesView.style.display = 'block';
-        document.getElementById('allStatsView').style.display = 'block';
-      } else {
-        viewText.textContent = '👁️ Ver todas las plantillas de usuarios';
-        allTemplatesView.style.display = 'none';
-        document.getElementById('allStatsView').style.display = 'none';
-      }
-    }
-
-    function loadAllTemplatesView() {
-      const allTemplates = getAllTemplates();
-      const container = document.getElementById('allTemplatesView');
-      
-      if (allTemplates.length === 0) {
-        container.innerHTML = '<div class="empty-state"><p>No hay plantillas en el sistema</p></div>';
+    // 🚀 CAMPAÑAS INMEDIATAS
+    async function startCampaign(type) {
+      const templateId = document.getElementById('templateSelect').value;
+      if (!templateId) {
+        alert('Selecciona una plantilla');
         return;
       }
 
-      const grouped = {};
-      allTemplates.forEach(t => {
-        if (!grouped[t.ownerUsername]) {
-          grouped[t.ownerUsername] = {
-            name: t.ownerName,
-            templates: []
-          };
+      const costPerMessage = type === 'sms' ? 1 : 2;
+      const totalCost = clientsData.length * costPerMessage;
+
+      if (currentUser.credits < totalCost) {
+        alert(`❌ Créditos insuficientes.\n\nNecesitas: ${totalCost}\nTienes: ${currentUser.credits}`);
+        return;
+      }
+
+      if (!confirm(`🚀 Confirmar Campaña\n\n${clientsData.length} ${type === 'sms' ? 'SMS' : 'llamadas'} × ${costPerMessage} = ${totalCost} créditos\n\n¿Continuar?`)) return;
+
+      document.getElementById('btnSMS').disabled = true;
+      document.getElementById('btnCall').disabled = true;
+      document.getElementById('progressBar').style.display = 'block';
+
+      // Obtener plantilla
+      const templateResponse = await fetch(`${API_BASE}/templates/${currentUser.username}`);
+      const templateData = await templateResponse.json();
+      const template = templateData.templates.find(t => t._id === templateId);
+
+      let success = 0;
+      let errors = 0;
+
+      for (let i = 0; i < clientsData.length; i++) {
+        const client = clientsData[i];
+        const progress = Math.round(((i + 1) / clientsData.length) * 100);
+        document.getElementById('progressFill').style.width = `${progress}%`;
+        document.getElementById('progressFill').textContent = `${progress}%`;
+
+        try {
+          const message = replaceVariables(
+            type === 'sms' ? template.smsMessage : template.callScript,
+            client
+          );
+
+          const endpoint = type === 'sms' ? 'send-sms' : 'make-call';
+          const response = await fetch(`${API_BASE}/${endpoint}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              to: client.cleanPhone,
+              [type === 'sms' ? 'message' : 'script']: message,
+              username: currentUser.username
+            })
+          });
+
+          const result = await response.json();
+          if (result.success) {
+            success++;
+            currentUser.credits -= costPerMessage;
+            addLog(`✅ ${type === 'sms' ? 'SMS' : 'Llamada'} a ${client.Nombre} exitoso`, 'success');
+          } else {
+            errors++;
+            addLog(`❌ Error con ${client.Nombre}: ${result.error}`, 'error');
+          }
+        } catch (error) {
+          errors++;
+          addLog(`❌ Error: ${error.message}`, 'error');
         }
-        grouped[t.ownerUsername].templates.push(t);
+
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+
+      // Actualizar estadísticas
+      await fetch(`${API_BASE}/stats/${currentUser.username}/update`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          $inc: {
+            total: clientsData.length,
+            success: success,
+            errors: errors
+          }
+        })
       });
 
-      let html = '<h3 style="margin-bottom: 15px;">📋 Todas las Plantillas por Usuario</h3>';
-      
-      Object.keys(grouped).forEach(username => {
-        const userData = grouped[username];
-        html += `
-          <div style="margin-bottom: 20px;">
-            <h4 style="color: #667eea; margin-bottom: 10px;">👤 ${userData.name} (${username})</h4>
-            ${userData.templates.map(t => {
-              let preview = '';
-              if (t.sms) preview += `📱 SMS: ${t.sms.substring(0, 40)}...`;
-              if (t.call) preview += `${t.sms ? ' | ' : ''}📞 Script configurado`;
-              
-              return `
-                <div class="template-card">
-                  <strong>${t.company} - ${t.name}</strong>
-                  <p style="margin: 5px 0; color: #666; font-size: 0.85em;">${preview}</p>
-                </div>
-              `;
-            }).join('')}
-          </div>
-        `;
-      });
-      
-      container.innerHTML = html;
+      document.getElementById('progressBar').style.display = 'none';
+      document.getElementById('btnSMS').disabled = false;
+      document.getElementById('btnCall').disabled = false;
+      updateUserInfo();
+      loadStats();
+      addLog(`📊 Campaña completada: ${success} exitosos, ${errors} errores`, 'info');
     }
 
-    function loadAllStatsView() {
-      const container = document.getElementById('allStatsView');
-      let html = '<h3 style="margin-bottom: 15px;">📊 Estadísticas por Usuario</h3>';
-      
-      users.forEach(user => {
-        const key = STORAGE_KEYS.stats(user.username);
-        const stats = localStorage.getItem(key);
-        const userStats = stats ? JSON.parse(stats) : null;
-        
-        if (userStats && userStats.total > 0) {
-          html += `
-            <div style="background: white; padding: 15px; border-radius: 10px; margin-bottom: 15px;">
-              <h4 style="color: #667eea; margin-bottom: 10px;">👤 ${user.name}</h4>
-              <div class="stats-grid" style="grid-template-columns: repeat(4, 1fr);">
-                <div style="text-align: center;">
-                  <div style="font-size: 1.5em; font-weight: bold; color: #667eea;">${userStats.total}</div>
-                  <div style="font-size: 0.85em; color: #666;">Total</div>
-                </div>
-                <div style="text-align: center;">
-                  <div style="font-size: 1.5em; font-weight: bold; color: #10b981;">${userStats.success}</div>
-                  <div style="font-size: 0.85em; color: #666;">Exitosos</div>
-                </div>
-                <div style="text-align: center;">
-                  <div style="font-size: 1.5em; font-weight: bold; color: #ef4444;">${userStats.errors}</div>
-                  <div style="font-size: 0.85em; color: #666;">Errores</div>
-                </div>
-                <div style="text-align: center;">
-                  <div style="font-size: 1.5em; font-weight: bold; color: #f59e0b;">${userStats.callAnswered}</div>
-                  <div style="font-size: 0.85em; color: #666;">Llamadas</div>
-                </div>
-              </div>
-            </div>
-          `;
-        }
-      });
-      
-      container.innerHTML = html;
-    }
+    // 📅 CAMPAÑAS PROGRAMADAS
+    async function scheduleCampaign() {
+      const name = document.getElementById('campaignName').value;
+      const templateId = document.getElementById('scheduleTemplateSelect').value;
+      const type = document.getElementById('campaignType').value;
+      const date = document.getElementById('scheduleDate').value;
+      const time = document.getElementById('scheduleTime').value;
 
-    function loadUsers() {
-      const list = document.getElementById('usersList');
-      list.innerHTML = users.map(u => `
-        <div class="user-row">
-          <div class="user-details">
-            <div class="user-name">${u.name} (${u.username})</div>
-            <div class="user-meta">
-              ${u.email} • ${u.role === 'admin' ? '👑 Administrador' : '👤 Usuario'} • 💳 ${u.credits} créditos
-            </div>
-          </div>
-          <div class="user-actions">
-            ${u.username !== 'admin' ? `<button class="btn btn-danger" onclick="deleteUser('${u.username}')" style="padding: 8px 15px; font-size: 0.9em;">🗑️ Eliminar</button>` : ''}
-          </div>
-        </div>
-      `).join('');
-
-      const select = document.getElementById('creditUserId');
-      select.innerHTML = users.map(u => `<option value="${u.username}">${u.name}</option>`).join('');
-    }
-
-    function createUser() {
-      const username = document.getElementById('newUserName').value.trim();
-      const email = document.getElementById('newUserEmail').value.trim();
-      const password = document.getElementById('newUserPassword').value;
-      const credits = parseInt(document.getElementById('newUserCredits').value);
-      const role = document.getElementById('newUserRole').value;
-
-      if (!username || !email || !password) {
-        alert('Completa todos los campos obligatorios');
+      if (!name || !templateId || !date || !time) {
+        alert('Completa todos los campos');
         return;
       }
 
-      if (users.find(u => u.username === username)) {
-        alert('Este nombre de usuario ya existe');
+      if (loadedClients.length === 0) {
+        alert('Primero carga clientes desde la pestaña Campañas');
         return;
       }
 
-      const newUser = {
-        id: Date.now(),
-        username: username,
-        password: password,
-        name: username,
-        email: email,
-        credits: credits,
-        role: role,
-        createdAt: new Date().toISOString()
-      };
-
-      users.push(newUser);
-      saveUsers();
-      loadUsers();
-      addLog(`Usuario ${username} creado exitosamente`, 'success');
-      
-      document.getElementById('newUserName').value = '';
-      document.getElementById('newUserEmail').value = '';
-      document.getElementById('newUserPassword').value = '';
-      document.getElementById('newUserCredits').value = '100';
-    }
-
-    function deleteUser(username) {
-      if (username === 'admin') {
-        alert('No se puede eliminar al usuario administrador principal');
+      const scheduledDate = new Date(`${date}T${time}`);
+      if (scheduledDate < new Date()) {
+        alert('La fecha debe ser futura');
         return;
       }
 
-      if (confirm(`¿Eliminar al usuario ${username}? Esto eliminará también sus plantillas y datos.`)) {
-        // Eliminar datos del usuario
-        localStorage.removeItem(STORAGE_KEYS.templates(username));
-        localStorage.removeItem(STORAGE_KEYS.stats(username));
-        localStorage.removeItem(STORAGE_KEYS.logs(username));
-        
-        users = users.filter(u => u.username !== username);
-        saveUsers();
-        loadUsers();
-        addLog(`Usuario ${username} eliminado`, 'info');
-      }
-    }
+      const clientIds = loadedClients.map(c => c._id);
+      const costPerMessage = type === 'sms' ? 1 : 2;
+      const totalCost = clientIds.length * costPerMessage;
 
-    function assignCredits() {
-      const username = document.getElementById('creditUserId').value;
-      const amount = parseInt(document.getElementById('creditAmount').value);
-      
-      const user = users.find(u => u.username === username);
-      if (user) {
-        user.credits += amount;
-        saveUsers();
-        
-        if (currentUser.username === username) {
-          currentUser.credits = user.credits;
-          sessionStorage.setItem('current_user', JSON.stringify(currentUser));
-        }
-        
-        loadUsers();
-        updateUserInfo();
-        addLog(`${amount} créditos asignados a ${user.name}`, 'success');
+      if (currentUser.credits < totalCost) {
+        alert(`❌ Créditos insuficientes.\n\nSe necesitarán ${totalCost} créditos cuando se ejecute.\nTienes: ${currentUser.credits}`);
+        return;
       }
-    }
 
-    // 🧪 TEST
-    async function testConnection() {
       try {
-        const response = await fetch(`${API_BASE}/test`);
+        const response = await fetch(`${API_BASE}/scheduled-campaigns`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            username: currentUser.username,
+            name,
+            templateId,
+            type,
+            scheduledDate: scheduledDate.toISOString(),
+            clientIds
+          })
+        });
+
         const data = await response.json();
-        if (data.status === 'OK') {
-          addLog('✅ Conexión con servidor establecida', 'success');
+        if (data.success) {
+          addLog(`✅ Campaña "${name}" programada para ${scheduledDate.toLocaleString('es-MX')}`, 'success');
+          document.getElementById('campaignName').value = '';
+          document.getElementById('scheduleDate').value = '';
+          document.getElementById('scheduleTime').value = '';
+          loadScheduledCampaigns();
         }
       } catch (error) {
-        addLog('⚠️ Modo sin conexión - usando datos locales', 'info');
+        addLog('Error programando campaña', 'error');
       }
+    }
+
+    async function loadScheduledCampaigns() {
+      try {
+        const response = await fetch(`${API_BASE}/scheduled-campaigns/${currentUser.username}`);
+        const data = await response.json();
+
+        if (data.success) {
+          const campaigns = data.campaigns;
+          const list = document.getElementById('scheduledList');
+
+          if (campaigns.length === 0) {
+            list.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📅</div><p>No hay campañas programadas</p></div>';
+          } else {
+            list.innerHTML = campaigns.map(c => {
+              const scheduledDate = new Date(c.scheduledDate);
+              const statusClass = `status-${c.status}`;
+              const statusText = {
+                scheduled: '⏰ Programada',
+                running: '▶️ Ejecutando',
+                completed: '✅ Completada',
+                cancelled: '❌ Cancelada'
+              }[c.status];
+
+              return `
+                <div class="campaign-card">
+                  <div class="campaign-header">
+                    <div>
+                      <div class="campaign-title">${c.name}</div>
+                      <div class="campaign-meta">
+                        📅 ${scheduledDate.toLocaleDateString('es-MX')} a las ${scheduledDate.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}
+                        <br>
+                        ${c.type === 'sms' ? '📱 SMS' : '📞 Llamada'} • ${c.results.total} clientes
+                        ${c.status === 'completed' ? `• ${c.results.success} exitosos, ${c.results.errors} errores` : ''}
+                      </div>
+                    </div>
+                    <span class="campaign-status ${statusClass}">${statusText}</span>
+                  </div>
+                  ${c.status === 'scheduled' ? `
+                    <div class="campaign-actions">
+                      <button class="btn btn-danger" onclick="cancelCampaign('${c._id}')" style="padding: 8px 15px; font-size: 0.9em;">
+                        🗑️ Cancelar
+                      </button>
+                    </div>
+                  ` : ''}
+                </div>
+              `;
+            }).join('');
+          }
+        }
+      } catch (error) {
+        console.error('Error cargando campañas programadas:', error);
+      }
+    }
+
+    async function cancelCampaign(id) {
+      if (!confirm('¿Cancelar esta campaña?')) return;
+
+      try {
+        await fetch(`${API_BASE}/scheduled-campaigns/${id}`, { method: 'DELETE' });
+        loadScheduledCampaigns();
+        addLog('Campaña cancelada', 'info');
+      } catch (error) {
+        console.error('Error:', error);
+      }
+    }
+
+    // 📊 ESTADÍSTICAS
+    async function loadStats() {
+      try {
+        const response = await fetch(`${API_BASE}/stats/${currentUser.username}`);
+        const data = await response.json();
+
+        if (data.success) {
+          const stats = data.stats;
+          document.getElementById('statTotal').textContent = stats.total;
+          document.getElementById('statSuccess').textContent = stats.success;
+          document.getElementById('statErrors').textContent = stats.errors;
+          document.getElementById('statPending').textContent = stats.pending;
+        }
+      } catch (error) {
+        console.error('Error cargando estadísticas:', error);
+      }
+    }
+
+    // 📋 LOGS
+    async function loadLogs() {
+      try {
+        const response = await fetch(`${API_BASE}/logs/${currentUser.username}`);
+        const data = await response.json();
+
+        if (data.success) {
+          const container = document.getElementById('logContainer');
+          if (data.logs.length === 0) {
+            container.innerHTML = '<div class="log-entry log-info">ℹ️ Sistema iniciado</div>';
+          } else {
+            container.innerHTML = data.logs.map(log => {
+              const time = new Date(log.timestamp).toLocaleTimeString();
+              return `<div class="log-entry log-${log.type}">[${time}] ${log.message}</div>`;
+            }).join('');
+          }
+        }
+      } catch (error) {
+        console.error('Error cargando logs:', error);
+      }
+    }
+
+    async function addLog(message, type = 'info') {
+      try {
+        await fetch(`${API_BASE}/logs`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            username: currentUser.username,
+            message,
+            type
+          })
+        });
+        loadLogs();
+      } catch (error) {
+        console.error('Error guardando log:', error);
+      }
+    }
+
+    // 👥 ADMINISTRACIÓN
+    async function loadUsers() {
+      try {
+        const response = await fetch(`${API_BASE}/users`);
+        const data = await response.json();
+
+        if (data.success) {
+          const list = document.getElementById('usersList');
+          list.innerHTML = data.users.map(u => `
+            <div style="background: white; padding: 15px; border-radius: 10px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <strong>${u.name}</strong> (${u.username})
+                <div style="color: #666; font-size: 0.9em; margin-top: 5px;">
+                  ${u.email} • ${u.role === 'admin' ? '👑 Admin' : '👤 Usuario'} • 💳 ${u.credits} créditos
+                </div>
+              </div>
+              ${u.username !== 'admin' ? `
+                <button class="btn btn-danger" onclick="deleteUser('${u.username}')" style="padding: 8px 15px;">
+                  🗑️ Eliminar
+                </button>
+              ` : ''}
+            </div>
+          `).join('');
+        }
+      } catch (error) {
+        console.error('Error cargando usuarios:', error);
+      }
+    }
+
+    async function createUser() {
+      const user = {
+        username: document.getElementById('newUsername').value,
+        password: document.getElementById('newUserPassword').value,
+        name: document.getElementById('newUserName').value,
+        email: document.getElementById('newUserEmail').value,
+        credits: parseInt(document.getElementById('newUserCredits').value),
+        role: document.getElementById('newUserRole').value
+      };
+
+      if (!user.username || !user.password || !user.name || !user.email) {
+        alert('Completa todos los campos');
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_BASE}/users`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(user)
+        });
+
+        const data = await response.json();
+        if (data.success) {
+          loadUsers();
+          addLog(`Usuario ${user.username} creado`, 'success');
+          document.getElementById('newUsername').value = '';
+          document.getElementById('newUserPassword').value = '';
+          document.getElementById('newUserName').value = '';
+          document.getElementById('newUserEmail').value = '';
+          document.getElementById('newUserCredits').value = '100';
+        } else {
+          alert(data.error);
+        }
+      } catch (error) {
+        addLog('Error creando usuario', 'error');
+      }
+    }
+
+    async function deleteUser(username) {
+      if (!confirm(`¿Eliminar usuario ${username}?`)) return;
+
+      try {
+        await fetch(`${API_BASE}/users/${username}`, { method: 'DELETE' });
+        loadUsers();
+        addLog(`Usuario ${username} eliminado`, 'info');
+      } catch (error) {
+        console.error('Error:', error);
+      }
+    }
+
+    // 🛠️ UTILIDADES
+    function replaceVariables(text, client) {
+      return text
+        .replace(/\{Nombre\}/g, client.Nombre || client.name)
+        .replace(/\{Telefono\}/g, client.Telefono || client.phone)
+        .replace(/\{Deuda\}/g, client.Deuda || client.debt)
+        .replace(/\{Compañia\}/g, client.Compañia || client.company);
     }
 
     // 🚀 INICIALIZAR
     window.onload = function() {
-      initializeSystem();
+      const sessionUser = sessionStorage.getItem('current_user');
+      if (sessionUser) {
+        currentUser = JSON.parse(sessionUser);
+        showMainScreen();
+      }
+      
+      // Establecer fecha y hora mínima (ahora)
+      const now = new Date();
+      const today = now.toISOString().split('T')[0];
+      const currentTime = now.toTimeString().slice(0, 5);
+      
+      document.getElementById('scheduleDate').min = today;
+      document.getElementById('scheduleDate').value = today;
+      document.getElementById('scheduleTime').value = currentTime;
     };
   </script>
 </body>
