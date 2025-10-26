@@ -4,8 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sistema de Cobranza - MongoDB + Scheduler</title>
-  <!-- Librería para exportar Excel -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <style>
     * {
       margin: 0;
@@ -218,21 +216,8 @@
       gap: 20px;
     }
 
-    .three-columns {
-      display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
-      gap: 15px;
-    }
-
-    @media (max-width: 968px) {
-      .three-columns {
-        grid-template-columns: 1fr 1fr;
-      }
-    }
-
     @media (max-width: 768px) {
-      .two-columns,
-      .three-columns {
+      .two-columns {
         grid-template-columns: 1fr;
       }
     }
@@ -266,32 +251,14 @@
       color: white;
     }
 
-    .btn-success:hover {
-      background: #059669;
-      transform: translateY(-2px);
-      box-shadow: 0 5px 15px rgba(16, 185, 129, 0.4);
-    }
-
     .btn-warning {
       background: #f59e0b;
       color: white;
     }
 
-    .btn-warning:hover {
-      background: #d97706;
-      transform: translateY(-2px);
-      box-shadow: 0 5px 15px rgba(245, 158, 11, 0.4);
-    }
-
     .btn-danger {
       background: #ef4444;
       color: white;
-    }
-
-    .btn-danger:hover {
-      background: #dc2626;
-      transform: translateY(-2px);
-      box-shadow: 0 5px 15px rgba(239, 68, 68, 0.4);
     }
 
     .btn-full {
@@ -304,11 +271,6 @@
       cursor: not-allowed;
     }
 
-    .btn-small {
-      padding: 6px 12px;
-      font-size: 0.85em;
-    }
-
     .stats-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -319,136 +281,83 @@
     .stat-card {
       background: white;
       padding: 20px;
-      border-radius: 12px;
+      border-radius: 10px;
       text-align: center;
-      border-left: 4px solid;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
     }
 
-    .stat-card.total { border-color: #667eea; }
-    .stat-card.success { border-color: #10b981; }
-    .stat-card.error { border-color: #ef4444; }
-    .stat-card.pending { border-color: #f59e0b; }
-
-    .stat-value {
+    .stat-number {
       font-size: 2.5em;
       font-weight: bold;
-      margin: 10px 0;
+      margin-bottom: 5px;
     }
+
+    .stat-number.success { color: #10b981; }
+    .stat-number.error { color: #ef4444; }
+    .stat-number.pending { color: #f59e0b; }
+    .stat-number.total { color: #667eea; }
 
     .stat-label {
       color: #666;
       font-size: 0.9em;
-      font-weight: 600;
     }
 
-    .client-card {
+    .log-container {
+      max-height: 400px;
+      overflow-y: auto;
       background: white;
+      border-radius: 10px;
       padding: 15px;
-      border-radius: 10px;
-      margin-bottom: 10px;
-      border-left: 4px solid #667eea;
+      margin-top: 15px;
     }
 
-    .client-header {
+    .log-entry {
+      padding: 10px;
+      margin-bottom: 8px;
+      border-radius: 8px;
+      font-size: 0.9em;
       display: flex;
-      justify-content: space-between;
       align-items: center;
-      flex-wrap: wrap;
       gap: 10px;
-      margin-bottom: 10px;
     }
 
-    .client-name {
-      font-weight: bold;
-      font-size: 1.1em;
-      color: #333;
-    }
-
-    .client-info {
-      color: #666;
-      font-size: 0.9em;
-      margin-top: 5px;
-    }
-
-    .client-actions {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      margin-top: 10px;
-    }
-
-    .client-actions button {
-      padding: 8px 15px;
-      font-size: 0.9em;
-    }
-
-    .status-badge {
-      padding: 6px 12px;
-      border-radius: 20px;
-      font-size: 0.85em;
-      font-weight: 600;
-    }
-
-    .status-pending { background: #fef3c7; color: #92400e; }
-    .status-contacted { background: #dbeafe; color: #1e40af; }
-    .status-promised { background: #e0e7ff; color: #4338ca; }
-    .status-paid { background: #d1fae5; color: #065f46; }
-    .status-dispute { background: #fee2e2; color: #991b1b; }
-    .status-scheduled { background: #fef3c7; color: #92400e; }
-    .status-running { background: #dbeafe; color: #1e40af; }
-    .status-completed { background: #d1fae5; color: #065f46; }
-    .status-cancelled { background: #fee2e2; color: #991b1b; }
-
-    .template-card {
-      background: white;
-      padding: 20px;
-      border-radius: 10px;
-      margin-bottom: 15px;
+    .log-success {
+      background: #d1fae5;
+      color: #065f46;
       border-left: 4px solid #10b981;
     }
 
-    .template-header {
+    .log-error {
+      background: #fee2e2;
+      color: #991b1b;
+      border-left: 4px solid #ef4444;
+    }
+
+    .log-info {
+      background: #dbeafe;
+      color: #1e40af;
+      border-left: 4px solid #3b82f6;
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 30px;
+      background: #e5e7eb;
+      border-radius: 15px;
+      overflow: hidden;
+      margin-top: 15px;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+      transition: width 0.3s;
       display: flex;
-      justify-content: space-between;
       align-items: center;
-      margin-bottom: 15px;
-    }
-
-    .template-title {
-      font-weight: bold;
-      font-size: 1.2em;
-      color: #333;
-    }
-
-    .template-company {
-      color: #666;
+      justify-content: center;
+      color: white;
+      font-weight: 600;
       font-size: 0.9em;
-      margin-top: 5px;
-    }
-
-    .template-content {
-      background: #f8f9fa;
-      padding: 15px;
-      border-radius: 8px;
-      margin-bottom: 10px;
-      position: relative;
-    }
-
-    .template-content h4 {
-      color: #667eea;
-      margin-bottom: 8px;
-      font-size: 0.9em;
-    }
-
-    .template-content p {
-      color: #333;
-      line-height: 1.6;
-      white-space: pre-wrap;
-    }
-
-    .template-actions {
-      display: flex;
-      gap: 10px;
     }
 
     .campaign-card {
@@ -456,452 +365,283 @@
       padding: 20px;
       border-radius: 10px;
       margin-bottom: 15px;
-      border-left: 4px solid #667eea;
+      border: 2px solid #e9ecef;
+      transition: all 0.3s;
+    }
+
+    .campaign-card:hover {
+      border-color: #667eea;
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
     }
 
     .campaign-header {
       display: flex;
       justify-content: space-between;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 10px;
+      align-items: start;
       margin-bottom: 15px;
     }
 
     .campaign-title {
-      font-weight: bold;
       font-size: 1.2em;
+      font-weight: 600;
       color: #333;
+    }
+
+    .campaign-status {
+      padding: 5px 12px;
+      border-radius: 15px;
+      font-size: 0.85em;
+      font-weight: 600;
+    }
+
+    .status-scheduled {
+      background: #dbeafe;
+      color: #1e40af;
+    }
+
+    .status-running {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .status-completed {
+      background: #d1fae5;
+      color: #065f46;
+    }
+
+    .status-cancelled {
+      background: #fee2e2;
+      color: #991b1b;
     }
 
     .campaign-meta {
       color: #666;
       font-size: 0.9em;
-      margin-top: 5px;
-    }
-
-    .campaign-status {
-      padding: 6px 12px;
-      border-radius: 20px;
-      font-size: 0.85em;
-      font-weight: 600;
+      margin-top: 10px;
     }
 
     .campaign-actions {
       display: flex;
       gap: 10px;
-      margin-top: 10px;
+      margin-top: 15px;
     }
 
-    .log-container {
-      background: #1e293b;
-      padding: 20px;
-      border-radius: 10px;
-      max-height: 400px;
-      overflow-y: auto;
-      font-family: 'Courier New', monospace;
-      font-size: 0.9em;
+    .datetime-input {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
     }
 
-    .log-entry {
-      padding: 8px;
-      margin-bottom: 5px;
-      border-radius: 5px;
-      border-left: 3px solid;
-    }
-
-    .log-info {
-      background: rgba(59, 130, 246, 0.1);
-      color: #60a5fa;
-      border-color: #3b82f6;
-    }
-
-    .log-success {
-      background: rgba(34, 197, 94, 0.1);
-      color: #4ade80;
-      border-color: #22c55e;
-    }
-
-    .log-error {
-      background: rgba(239, 68, 68, 0.1);
-      color: #f87171;
-      border-color: #ef4444;
+    .info-banner {
+      background: #e0e7ff;
+      border-left: 4px solid #667eea;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
     }
 
     .empty-state {
       text-align: center;
-      padding: 60px 20px;
-      color: #666;
+      padding: 40px;
+      color: #999;
     }
 
     .empty-state-icon {
-      font-size: 4em;
-      margin-bottom: 20px;
-      opacity: 0.5;
-    }
-
-    .filter-section {
-      background: white;
-      padding: 20px;
-      border-radius: 10px;
-      margin-bottom: 20px;
-      border: 2px solid #e9ecef;
-    }
-
-    .filter-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 15px;
+      font-size: 3em;
       margin-bottom: 15px;
     }
 
-    .filter-actions {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
+    .password-toggle {
+      position: relative;
     }
 
-    .info-box {
-      background: #e0e7ff;
-      border-left: 4px solid #4f46e5;
+    .password-toggle input {
+      padding-right: 45px;
+    }
+
+    .password-toggle-btn {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: #666;
+      font-size: 1.2em;
+    }
+
+    .template-card {
+      background: white;
       padding: 15px;
       border-radius: 8px;
-      margin-bottom: 20px;
-      color: #3730a3;
+      margin-bottom: 10px;
+      border: 2px solid #e9ecef;
+      transition: all 0.3s;
     }
 
-    .info-box strong {
-      display: block;
-      margin-bottom: 5px;
+    .template-card:hover {
+      border-color: #667eea;
+      box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
     }
 
-    .action-buttons {
+    .variable-tags {
       display: flex;
+      flex-wrap: wrap;
       gap: 10px;
-      flex-wrap: wrap;
-      margin-top: 15px;
-    }
-
-    .variable-buttons {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
       margin-top: 10px;
-      padding: 12px;
-      background: white;
-      border-radius: 8px;
-      border: 2px dashed #e9ecef;
     }
 
-    .variable-buttons label {
-      display: block;
-      width: 100%;
-      margin-bottom: 8px;
-      font-size: 0.9em;
-      color: #666;
-    }
-
-    /* Scrollbar personalizado */
-    ::-webkit-scrollbar {
-      width: 10px;
-      height: 10px;
-    }
-
-    ::-webkit-scrollbar-track {
-      background: #f1f1f1;
-      border-radius: 10px;
-    }
-
-    ::-webkit-scrollbar-thumb {
+    .variable-tag {
+      padding: 5px 12px;
       background: #667eea;
-      border-radius: 10px;
+      color: white;
+      border-radius: 5px;
+      font-size: 0.85em;
+      cursor: pointer;
+      transition: all 0.3s;
     }
 
-    ::-webkit-scrollbar-thumb:hover {
+    .variable-tag:hover {
       background: #5568d3;
-    }
-
-    /* Animación de carga */
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-
-    .spinner {
-      display: inline-block;
-      width: 20px;
-      height: 20px;
-      border: 3px solid rgba(255,255,255,.3);
-      border-radius: 50%;
-      border-top-color: white;
-      animation: spin 0.8s ease-in-out infinite;
-    }
-
-    /* Ocultar elementos de admin */
-    .admin-only {
-      display: none !important;
-    }
-
-    .admin-only.show {
-      display: block !important;
-    }
-
-    button.admin-only.show {
-      display: inline-flex !important;
+      transform: scale(1.05);
     }
   </style>
 </head>
 <body>
-  <!-- PANTALLA DE LOGIN -->
+  <!-- 🔐 PANTALLA DE LOGIN -->
   <div class="login-screen" id="loginScreen">
     <div class="login-box">
-      <h1>🚀 Sistema de Cobranza</h1>
-      <p>MongoDB + Scheduler</p>
+      <h1>🔐 Sistema de Cobranza</h1>
+      <p>MongoDB + Programación Automática</p>
       
       <div class="login-error" id="loginError"></div>
       
-      <form class="login-form" onsubmit="login(event)">
+      <form class="login-form" onsubmit="handleLogin(event)">
         <div class="form-group">
-          <label>Usuario</label>
-          <input type="text" id="loginUsername" required autocomplete="username">
+          <label>👤 Usuario</label>
+          <input type="text" id="loginUsername" placeholder="Ingresa tu usuario" required>
         </div>
         
-        <div class="form-group">
-          <label>Contraseña</label>
-          <input type="password" id="loginPassword" required autocomplete="current-password">
+        <div class="form-group password-toggle">
+          <label>🔑 Contraseña</label>
+          <input type="password" id="loginPassword" placeholder="Ingresa tu contraseña" required>
+          <button type="button" class="password-toggle-btn" onclick="togglePassword('loginPassword')">👁️</button>
         </div>
         
-        <button type="submit" class="btn btn-primary btn-full">
-          🔐 Iniciar Sesión
-        </button>
+        <button type="submit" class="btn btn-primary btn-full">Iniciar Sesión</button>
       </form>
-
-      <div style="margin-top: 30px; padding-top: 20px; border-top: 2px solid #e9ecef; text-align: center; color: #666; font-size: 0.9em;">
-        <strong>Usuario de prueba:</strong><br>
-        Usuario: <code style="background: #f3f4f6; padding: 2px 8px; border-radius: 4px;">admin</code><br>
-        Contraseña: <code style="background: #f3f4f6; padding: 2px 8px; border-radius: 4px;">admin123</code>
-      </div>
     </div>
   </div>
 
-  <!-- PANTALLA PRINCIPAL -->
+  <!-- 📊 PANTALLA PRINCIPAL -->
   <div class="main-screen" id="mainScreen">
     <div class="container">
-      <!-- HEADER -->
       <div class="header">
-        <h1>📊 Sistema de Cobranza</h1>
+        <div>
+          <h1>📱 Sistema de Cobranza Pro</h1>
+          <p style="margin-top: 5px; opacity: 0.9;">MongoDB + Scheduler Automático</p>
+        </div>
         <div class="user-info">
-          <span id="userName"></span>
-          <span class="user-badge" id="userRole"></span>
-          <span class="credits">💳 <span id="userCredits">0</span></span>
-          <button class="btn btn-danger" onclick="logout()" style="padding: 8px 15px;">
-            🚪 Salir
-          </button>
+          <div>
+            <div id="userName">Usuario</div>
+            <span class="user-badge" id="userRole">Usuario</span>
+            <div class="credits">💳 <span id="userCredits">0</span> créditos</div>
+          </div>
+          <button class="btn btn-danger" onclick="logout()">Salir</button>
         </div>
       </div>
 
-      <!-- TABS -->
       <div class="tabs">
-        <button class="tab active" onclick="showTab('dashboard')">📊 Dashboard</button>
-        <button class="tab" onclick="showTab('campaigns')">📱 Campañas</button>
-        <button class="tab" onclick="showTab('templates')">📝 Plantillas</button>
-        <button class="tab" onclick="showTab('scheduler')">⏰ Programar</button>
-        <button class="tab" onclick="showTab('clients')">👥 Clientes</button>
-        <button class="tab" onclick="showTab('stats')">📈 Estadísticas</button>
-        <button class="tab" onclick="showTab('logs')">📋 Logs</button>
-        <button class="tab admin-only" onclick="showTab('admin')">⚙️ Admin</button>
+        <button class="tab active" onclick="switchTab('campaign')">📊 Campañas</button>
+        <button class="tab" onclick="switchTab('scheduled')">📅 Programadas</button>
+        <button class="tab" onclick="switchTab('templates')">📝 Plantillas</button>
+        <button class="tab" onclick="switchTab('clients')">👥 Clientes</button>
+        <button class="tab" onclick="switchTab('stats')">📈 Estadísticas</button>
+        <button class="tab" onclick="switchTab('admin')" id="adminTab" style="display:none">⚙️ Admin</button>
       </div>
 
-      <!-- 📊 DASHBOARD -->
-      <div class="tab-content active" id="tab-dashboard">
-        <h2 style="color: #667eea; margin-bottom: 20px;">📊 Panel de Control</h2>
-        
-        <div class="stats-grid">
-          <div class="stat-card total">
-            <div class="stat-label">Total Enviados</div>
-            <div class="stat-value" id="statTotal">0</div>
-          </div>
-          <div class="stat-card success">
-            <div class="stat-label">Exitosos</div>
-            <div class="stat-value" id="statSuccess">0</div>
-          </div>
-          <div class="stat-card error">
-            <div class="stat-label">Errores</div>
-            <div class="stat-value" id="statErrors">0</div>
-          </div>
-          <div class="stat-card pending">
-            <div class="stat-label">Pendientes</div>
-            <div class="stat-value" id="statPending">0</div>
+      <!-- TAB: CAMPAÑAS -->
+      <div class="tab-content active" id="campaign">
+        <div class="info-banner">
+          <span style="font-size: 1.5em;">🚀</span>
+          <div>
+            <strong>Envío Inmediato:</strong> Ejecuta campañas de SMS o llamadas al instante.
           </div>
         </div>
-
-        <div class="section">
-          <h2>📋 Actividad Reciente</h2>
-          <div class="log-container" id="dashboardLogs">
-            <div class="log-entry log-info">ℹ️ Sistema iniciado</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- 📱 CAMPAÑAS -->
-      <div class="tab-content" id="tab-campaigns">
-        <h2 style="color: #667eea; margin-bottom: 20px;">📱 Gestión de Campañas</h2>
 
         <div class="section">
           <h2>📂 Cargar Clientes</h2>
-          <div class="info-box">
-            <strong>📋 Formato del CSV:</strong>
-            El archivo debe contener las columnas: <strong>Nombre, Telefono, Deuda, Compañia</strong><br>
-            (Pueden variar en mayúsculas/minúsculas. El sistema las detectará automáticamente)
-          </div>
-          <input type="file" id="csvFile" accept=".csv" style="margin-bottom: 15px;">
-          <button class="btn btn-primary" onclick="loadCSV()">
-            📥 Cargar CSV
+          <input type="file" id="fileInput" accept=".csv,.xlsx,.xls" style="display:none">
+          <button class="btn btn-primary" onclick="document.getElementById('fileInput').click()">
+            📄 Seleccionar Archivo CSV/Excel
           </button>
+          <div id="fileName" style="margin-top: 10px; color: #666;"></div>
         </div>
 
         <div class="section">
-          <h2>👥 Clientes Cargados (<span id="clientCount">0</span>)</h2>
-          <div id="clientsList">
-            <div class="empty-state">
-              <div class="empty-state-icon">📋</div>
-              <p>No hay clientes cargados</p>
-            </div>
-          </div>
-        </div>
-
-        <div class="section">
-          <h2>🚀 Enviar Campaña</h2>
+          <h2>🚀 Enviar Campaña Ahora</h2>
           <div class="form-group">
-            <label>Seleccionar Plantilla</label>
-            <select id="campaignTemplate">
-              <option value="">-- Selecciona una plantilla --</option>
+            <label>Plantilla a usar:</label>
+            <select id="templateSelect">
+              <option value="">Seleccionar plantilla...</option>
             </select>
           </div>
           <div class="two-columns">
-            <button class="btn btn-success" onclick="sendCampaign('sms')">
-              📱 Enviar SMS a Todos
+            <button class="btn btn-success" onclick="startCampaign('sms')" id="btnSMS" disabled>
+              📱 Enviar SMS Ahora
             </button>
-            <button class="btn btn-warning" onclick="sendCampaign('call')">
-              📞 Llamar a Todos
+            <button class="btn btn-warning" onclick="startCampaign('call')" id="btnCall" disabled>
+              📞 Hacer Llamadas Ahora
             </button>
           </div>
+          <div class="progress-bar" id="progressBar" style="display: none;">
+            <div class="progress-fill" id="progressFill">0%</div>
+          </div>
+        </div>
+
+        <div class="section">
+          <h2>📋 Registro de Actividad</h2>
+          <div class="log-container" id="logContainer"></div>
         </div>
       </div>
 
-      <!-- 📝 PLANTILLAS -->
-      <div class="tab-content" id="tab-templates">
-        <h2 style="color: #667eea; margin-bottom: 20px;">📝 Gestión de Plantillas</h2>
-
-        <div class="section">
-          <h2>➕ Crear Nueva Plantilla</h2>
-          <div class="form-group">
-            <label>Nombre de la Plantilla</label>
-            <input type="text" id="templateName" placeholder="Ej: Recordatorio de Pago">
-          </div>
-          <div class="form-group">
-            <label>Compañía</label>
-            <input type="text" id="templateCompany" placeholder="Ej: Mi Empresa S.A.">
-          </div>
-          
-          <div class="form-group">
-            <label>Mensaje SMS</label>
-            <div class="variable-buttons">
-              <label>👇 Haz clic para insertar variables:</label>
-              <button type="button" class="btn btn-primary btn-small" onclick="insertVariable('templateSMS', '{Nombre}')">
-                👤 {Nombre}
-              </button>
-              <button type="button" class="btn btn-primary btn-small" onclick="insertVariable('templateSMS', '{Telefono}')">
-                📞 {Telefono}
-              </button>
-              <button type="button" class="btn btn-primary btn-small" onclick="insertVariable('templateSMS', '{Deuda}')">
-                💰 {Deuda}
-              </button>
-              <button type="button" class="btn btn-primary btn-small" onclick="insertVariable('templateSMS', '{Compañia}')">
-                🏢 {Compañia}
-              </button>
-            </div>
-            <textarea id="templateSMS" placeholder="Escribe tu mensaje aquí..."></textarea>
-          </div>
-          
-          <div class="form-group">
-            <label>Script de Llamada</label>
-            <div class="variable-buttons">
-              <label>👇 Haz clic para insertar variables:</label>
-              <button type="button" class="btn btn-primary btn-small" onclick="insertVariable('templateCall', '{Nombre}')">
-                👤 {Nombre}
-              </button>
-              <button type="button" class="btn btn-primary btn-small" onclick="insertVariable('templateCall', '{Telefono}')">
-                📞 {Telefono}
-              </button>
-              <button type="button" class="btn btn-primary btn-small" onclick="insertVariable('templateCall', '{Deuda}')">
-                💰 {Deuda}
-              </button>
-              <button type="button" class="btn btn-primary btn-small" onclick="insertVariable('templateCall', '{Compañia}')">
-                🏢 {Compañia}
-              </button>
-            </div>
-            <textarea id="templateCall" placeholder="Escribe el script de llamada aquí..."></textarea>
-          </div>
-          
-          <button class="btn btn-primary" onclick="createTemplate()">
-            ✅ Guardar Plantilla
-          </button>
-        </div>
-
-        <div class="section">
-          <h2>📚 Mis Plantillas</h2>
-          <div id="templatesList">
-            <div class="empty-state">
-              <div class="empty-state-icon">📝</div>
-              <p>No hay plantillas creadas</p>
-            </div>
+      <!-- TAB: CAMPAÑAS PROGRAMADAS -->
+      <div class="tab-content" id="scheduled">
+        <div class="info-banner">
+          <span style="font-size: 1.5em;">📅</span>
+          <div>
+            <strong>Programación Automática:</strong> El sistema enviará tus campañas en la fecha y hora programadas.
           </div>
         </div>
-      </div>
-
-      <!-- ⏰ PROGRAMAR -->
-      <div class="tab-content" id="tab-scheduler">
-        <h2 style="color: #667eea; margin-bottom: 20px;">⏰ Programar Campañas</h2>
 
         <div class="section">
-          <h2>📅 Nueva Campaña Programada</h2>
-          <div class="info-box">
-            <strong>ℹ️ Instrucciones:</strong>
-            Programa una campaña para que se ejecute automáticamente en una fecha y hora específica.
-            Los créditos se descontarán cuando se ejecute la campaña.
-          </div>
-          
+          <h2>⏰ Programar Nueva Campaña</h2>
           <div class="form-group">
-            <label>Nombre de la Campaña</label>
-            <input type="text" id="campaignName" placeholder="Ej: Recordatorio Mensual">
+            <label>Nombre de la Campaña:</label>
+            <input type="text" id="campaignName" placeholder="Ej: Recordatorio Pago Enero">
           </div>
-
           <div class="form-group">
-            <label>Seleccionar Plantilla</label>
-            <select id="scheduleTemplate">
-              <option value="">-- Selecciona una plantilla --</option>
+            <label>Plantilla:</label>
+            <select id="scheduleTemplateSelect"></select>
+          </div>
+          <div class="form-group">
+            <label>Tipo:</label>
+            <select id="campaignType">
+              <option value="sms">📱 SMS</option>
+              <option value="call">📞 Llamada</option>
             </select>
           </div>
-
           <div class="form-group">
-            <label>Tipo de Campaña</label>
-            <select id="scheduleType">
-              <option value="sms">📱 SMS (1 crédito por mensaje)</option>
-              <option value="call">📞 Llamada (2 créditos por llamada)</option>
-            </select>
-          </div>
-
-          <div class="two-columns">
-            <div class="form-group">
-              <label>Fecha</label>
-              <input type="date" id="scheduleDate">
-            </div>
-            <div class="form-group">
-              <label>Hora</label>
-              <input type="time" id="scheduleTime">
+            <label>Fecha y Hora de Envío:</label>
+            <div class="datetime-input">
+              <input type="date" id="scheduleDate" required>
+              <input type="time" id="scheduleTime" required>
             </div>
           </div>
-
           <button class="btn btn-primary btn-full" onclick="scheduleCampaign()">
             ⏰ Programar Campaña
           </button>
@@ -909,422 +649,279 @@
 
         <div class="section">
           <h2>📋 Campañas Programadas</h2>
-          <div id="scheduledList">
-            <div class="empty-state">
-              <div class="empty-state-icon">📅</div>
-              <p>No hay campañas programadas</p>
-            </div>
-          </div>
+          <div id="scheduledList"></div>
         </div>
       </div>
 
-      <!-- 👥 CLIENTES -->
-      <div class="tab-content" id="tab-clients">
-        <h2 style="color: #667eea; margin-bottom: 20px;">👥 Gestión de Clientes</h2>
-
-        <!-- Filtros -->
-        <div class="filter-section">
-          <h2 style="margin-bottom: 15px;">🔍 Filtros de Búsqueda</h2>
-          
-          <div class="filter-grid">
-            <div class="form-group" style="margin-bottom: 0;">
-              <label>Estado</label>
-              <select id="filterStatus">
-                <option value="">Todos</option>
-                <option value="pending">Pendiente</option>
-                <option value="contacted">Contactado</option>
-                <option value="promised">Promesa de Pago</option>
-                <option value="paid">Pagado</option>
-                <option value="dispute">En Disputa</option>
-              </select>
-            </div>
-
-            <div class="form-group" style="margin-bottom: 0;">
-              <label>Fecha Desde</label>
-              <input type="date" id="filterDateFrom">
-            </div>
-
-            <div class="form-group" style="margin-bottom: 0;">
-              <label>Fecha Hasta</label>
-              <input type="date" id="filterDateTo">
-            </div>
-
-            <div class="form-group" style="margin-bottom: 0;">
-              <label>Buscar por Nombre</label>
-              <input type="text" id="filterName" placeholder="Nombre del cliente...">
+      <!-- TAB: PLANTILLAS -->
+      <div class="tab-content" id="templates">
+        <div class="section">
+          <h2>📝 Crear Nueva Plantilla</h2>
+          <div class="form-group">
+            <label>Nombre de la Compañía:</label>
+            <input type="text" id="companyName" placeholder="Ej: Banco Nacional">
+          </div>
+          <div class="form-group">
+            <label>Nombre de la Plantilla:</label>
+            <input type="text" id="templateName" placeholder="Ej: Recordatorio Pago">
+          </div>
+          <div class="form-group">
+            <label>Mensaje SMS:</label>
+            <textarea id="smsMessage" placeholder="Escribe tu mensaje aquí..."></textarea>
+            <div class="variable-tags">
+              <span class="variable-tag" onclick="insertVariable('smsMessage', '{Nombre}')">👤 {Nombre}</span>
+              <span class="variable-tag" onclick="insertVariable('smsMessage', '{Telefono}')">📱 {Telefono}</span>
+              <span class="variable-tag" onclick="insertVariable('smsMessage', '{Deuda}')">💰 {Deuda}</span>
+              <span class="variable-tag" onclick="insertVariable('smsMessage', '{Compañia}')">🏢 {Compañia}</span>
             </div>
           </div>
+          <div class="form-group">
+            <label>Script de Llamada:</label>
+            <textarea id="callScript" placeholder="Escribe el script..."></textarea>
+            <div class="variable-tags">
+              <span class="variable-tag" onclick="insertVariable('callScript', '{Nombre}')">👤 {Nombre}</span>
+              <span class="variable-tag" onclick="insertVariable('callScript', '{Telefono}')">📱 {Telefono}</span>
+              <span class="variable-tag" onclick="insertVariable('callScript', '{Deuda}')">💰 {Deuda}</span>
+              <span class="variable-tag" onclick="insertVariable('callScript', '{Compañia}')">🏢 {Compañia}</span>
+            </div>
+          </div>
+          <button class="btn btn-primary" onclick="saveTemplate()">💾 Guardar Plantilla</button>
+        </div>
 
-          <div class="filter-actions">
-            <button class="btn btn-primary" onclick="applyFilters()">
-              🔍 Aplicar Filtros
-            </button>
-            <button class="btn btn-warning" onclick="clearFilters()">
-              🔄 Limpiar Filtros
-            </button>
-            <button class="btn btn-success" onclick="exportToExcel()">
+        <div class="section">
+          <h2>📋 Mis Plantillas</h2>
+          <div id="templatesList"></div>
+        </div>
+      </div>
+
+      <!-- TAB: CLIENTES -->
+      <div class="tab-content" id="clients">
+        <div class="section">
+          <h2>👥 Gestión de Clientes</h2>
+          <div style="margin-bottom: 15px; display: flex; gap: 10px; flex-wrap: wrap;">
+            <button class="btn btn-primary" onclick="exportClientsToExcel()">
               📊 Exportar Todos a Excel
             </button>
-            <button class="btn btn-danger" onclick="exportFilteredToExcel()">
-              📥 Exportar Filtrados a Excel
+            <button class="btn btn-success" onclick="exportFilteredToExcel()">
+              📥 Exportar con Filtros
             </button>
           </div>
-
-          <div style="margin-top: 15px; padding: 10px; background: white; border-radius: 8px; font-size: 0.9em; color: #666;">
-            <strong>Total de clientes:</strong> <span id="totalClients">0</span> |
-            <strong>Filtrados:</strong> <span id="filteredClients">0</span>
-          </div>
-        </div>
-
-        <!-- Lista de clientes -->
-        <div class="section">
-          <h2>📋 Lista de Clientes</h2>
-          <div id="clientsFullList">
-            <div class="empty-state">
-              <div class="empty-state-icon">👥</div>
-              <p>No hay clientes registrados</p>
-            </div>
-          </div>
+          <div id="clientsList"></div>
         </div>
       </div>
 
-      <!-- 📈 ESTADÍSTICAS -->
-      <div class="tab-content" id="tab-stats">
-        <h2 style="color: #667eea; margin-bottom: 20px;">📈 Estadísticas Detalladas</h2>
-
+      <!-- TAB: ESTADÍSTICAS -->
+      <div class="tab-content" id="stats">
         <div class="stats-grid">
-          <div class="stat-card total">
-            <div class="stat-label">📊 Total Enviados</div>
-            <div class="stat-value" id="statDetailTotal">0</div>
+          <div class="stat-card">
+            <div class="stat-number total" id="statTotal">0</div>
+            <div class="stat-label">Total Enviados</div>
           </div>
-          <div class="stat-card success">
-            <div class="stat-label">✅ Exitosos</div>
-            <div class="stat-value" id="statDetailSuccess">0</div>
+          <div class="stat-card">
+            <div class="stat-number success" id="statSuccess">0</div>
+            <div class="stat-label">Exitosos</div>
           </div>
-          <div class="stat-card error">
-            <div class="stat-label">❌ Errores</div>
-            <div class="stat-value" id="statDetailErrors">0</div>
+          <div class="stat-card">
+            <div class="stat-number error" id="statErrors">0</div>
+            <div class="stat-label">Errores</div>
           </div>
-          <div class="stat-card pending">
-            <div class="stat-label">⏳ Pendientes</div>
-            <div class="stat-value" id="statDetailPending">0</div>
-          </div>
-        </div>
-
-        <div class="two-columns">
-          <div class="section">
-            <h2>📞 Estadísticas de Llamadas</h2>
-            <div style="background: white; padding: 20px; border-radius: 10px;">
-              <div style="margin-bottom: 15px; padding-bottom: 15px; border-bottom: 2px solid #f0f0f0;">
-                <strong>✅ Contestadas:</strong> <span id="statCallAnswered" style="float: right; font-size: 1.2em; color: #10b981;">0</span>
-              </div>
-              <div style="margin-bottom: 15px; padding-bottom: 15px; border-bottom: 2px solid #f0f0f0;">
-                <strong>❌ Rechazadas:</strong> <span id="statCallRejected" style="float: right; font-size: 1.2em; color: #ef4444;">0</span>
-              </div>
-              <div style="margin-bottom: 15px; padding-bottom: 15px; border-bottom: 2px solid #f0f0f0;">
-                <strong>📵 Ocupado:</strong> <span id="statCallBusy" style="float: right; font-size: 1.2em; color: #f59e0b;">0</span>
-              </div>
-              <div>
-                <strong>🔇 Sin Respuesta:</strong> <span id="statCallNoAnswer" style="float: right; font-size: 1.2em; color: #6b7280;">0</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="section">
-            <h2>📊 Resumen General</h2>
-            <div style="background: white; padding: 20px; border-radius: 10px;">
-              <div style="margin-bottom: 15px; padding-bottom: 15px; border-bottom: 2px solid #f0f0f0;">
-                <strong>Tasa de Éxito:</strong> 
-                <span id="successRate" style="float: right; font-size: 1.2em; color: #667eea; font-weight: bold;">0%</span>
-              </div>
-              <div style="margin-bottom: 15px; padding-bottom: 15px; border-bottom: 2px solid #f0f0f0;">
-                <strong>Tasa de Error:</strong> 
-                <span id="errorRate" style="float: right; font-size: 1.2em; color: #ef4444; font-weight: bold;">0%</span>
-              </div>
-              <div>
-                <strong>Última Actualización:</strong> 
-                <span id="lastUpdate" style="float: right; font-size: 0.9em; color: #666;">-</span>
-              </div>
-            </div>
+          <div class="stat-card">
+            <div class="stat-number pending" id="statPending">0</div>
+            <div class="stat-label">Pendientes</div>
           </div>
         </div>
       </div>
 
-      <!-- 📋 LOGS -->
-      <div class="tab-content" id="tab-logs">
-        <h2 style="color: #667eea; margin-bottom: 20px;">📋 Registro de Actividad</h2>
-
+      <!-- TAB: ADMIN -->
+      <div class="tab-content" id="admin">
         <div class="section">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-            <h2 style="margin: 0;">📝 Logs del Sistema</h2>
-            <button class="btn btn-primary" onclick="loadLogs()">
-              🔄 Actualizar
-            </button>
+          <h2>👥 Crear Nuevo Usuario</h2>
+          <div class="form-group">
+            <label>Nombre:</label>
+            <input type="text" id="newUserName">
           </div>
-          <div class="log-container" id="logContainer">
-            <div class="log-entry log-info">ℹ️ Cargando logs...</div>
+          <div class="form-group">
+            <label>Email:</label>
+            <input type="email" id="newUserEmail">
           </div>
-        </div>
-      </div>
-
-      <!-- ⚙️ ADMIN -->
-      <div class="tab-content admin-only" id="tab-admin">
-        <h2 style="color: #667eea; margin-bottom: 20px;">⚙️ Panel de Administración</h2>
-
-        <div class="section">
-          <h2>➕ Crear Nuevo Usuario</h2>
-          <div class="two-columns">
-            <div class="form-group">
-              <label>Usuario</label>
-              <input type="text" id="newUsername" placeholder="username">
-            </div>
-            <div class="form-group">
-              <label>Contraseña</label>
-              <input type="password" id="newUserPassword" placeholder="********">
-            </div>
+          <div class="form-group">
+            <label>Usuario:</label>
+            <input type="text" id="newUsername">
           </div>
-          <div class="two-columns">
-            <div class="form-group">
-              <label>Nombre Completo</label>
-              <input type="text" id="newUserName" placeholder="Juan Pérez">
-            </div>
-            <div class="form-group">
-              <label>Email</label>
-              <input type="email" id="newUserEmail" placeholder="usuario@ejemplo.com">
-            </div>
+          <div class="form-group password-toggle">
+            <label>Contraseña:</label>
+            <input type="password" id="newUserPassword">
+            <button type="button" class="password-toggle-btn" onclick="togglePassword('newUserPassword')">👁️</button>
           </div>
-          <div class="two-columns">
-            <div class="form-group">
-              <label>Créditos Iniciales</label>
-              <input type="number" id="newUserCredits" value="100" min="0">
-            </div>
-            <div class="form-group">
-              <label>Rol</label>
-              <select id="newUserRole">
-                <option value="user">👤 Usuario</option>
-                <option value="admin">👑 Administrador</option>
-              </select>
-            </div>
+          <div class="form-group">
+            <label>Créditos:</label>
+            <input type="number" id="newUserCredits" value="100">
           </div>
-          <button class="btn btn-primary" onclick="createUser()">
-            ✅ Crear Usuario
-          </button>
+          <div class="form-group">
+            <label>Rol:</label>
+            <select id="newUserRole">
+              <option value="user">Usuario</option>
+              <option value="admin">Administrador</option>
+            </select>
+          </div>
+          <button class="btn btn-primary" onclick="createUser()">➕ Crear Usuario</button>
         </div>
 
         <div class="section">
-          <h2>👥 Usuarios del Sistema</h2>
+          <h2>👤 Lista de Usuarios</h2>
           <div id="usersList"></div>
         </div>
       </div>
     </div>
   </div>
 
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script>
-    // ===================================
-    // 🔧 CONFIGURACIÓN
-    // ===================================
-    const API_BASE = window.location.origin + '/api';
-    let currentUser = null;
-    let loadedClients = [];
-    let allClients = [];
-    let filteredClients = [];
+    const API_BASE = window.location.hostname === 'localhost' 
+      ? 'http://localhost:3000/api' 
+      : `${window.location.origin}/api`;
 
-    // ===================================
+    let currentUser = null;
+    let clientsData = [];
+    let loadedClients = [];
+
     // 🔐 AUTENTICACIÓN
-    // ===================================
-    async function login(event) {
+    async function handleLogin(event) {
       event.preventDefault();
       
-      const username = document.getElementById('loginUsername').value;
+      const username = document.getElementById('loginUsername').value.trim();
       const password = document.getElementById('loginPassword').value;
-      const errorDiv = document.getElementById('loginError');
-
+      
       try {
         const response = await fetch(`${API_BASE}/auth/login`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ username, password })
         });
-
+        
         const data = await response.json();
-
+        
         if (data.success) {
           currentUser = data.user;
           sessionStorage.setItem('current_user', JSON.stringify(currentUser));
           showMainScreen();
         } else {
-          errorDiv.textContent = '❌ ' + (data.error || 'Credenciales inválidas');
-          errorDiv.style.display = 'block';
+          showLoginError(data.error);
         }
       } catch (error) {
-        errorDiv.textContent = '❌ Error de conexión con el servidor';
-        errorDiv.style.display = 'block';
+        showLoginError('Error de conexión');
       }
+    }
+
+    function showLoginError(message) {
+      const errorDiv = document.getElementById('loginError');
+      errorDiv.textContent = message;
+      errorDiv.style.display = 'block';
+      setTimeout(() => errorDiv.style.display = 'none', 3000);
     }
 
     function showMainScreen() {
       document.getElementById('loginScreen').style.display = 'none';
       document.getElementById('mainScreen').style.display = 'block';
-      
-      document.getElementById('userName').textContent = currentUser.name;
-      document.getElementById('userRole').textContent = currentUser.role === 'admin' ? '👑 Admin' : '👤 Usuario';
-      document.getElementById('userCredits').textContent = currentUser.credits;
-
-      // CRÍTICO: Mostrar elementos de admin SOLO si es admin
-      if (currentUser.role === 'admin') {
-        document.querySelectorAll('.admin-only').forEach(el => {
-          el.classList.add('show');
-        });
-        loadUsers();
-      } else {
-        // Asegurar que los elementos admin están ocultos
-        document.querySelectorAll('.admin-only').forEach(el => {
-          el.classList.remove('show');
-        });
-      }
-
-      // Cargar datos iniciales
+      updateUserInfo();
       loadTemplates();
+      loadScheduledCampaigns();
       loadStats();
       loadLogs();
-      loadAllClients();
+      loadClients();
+      
+      if (currentUser.role === 'admin') {
+        document.getElementById('adminTab').style.display = 'block';
+        loadUsers();
+      }
     }
 
     function logout() {
       sessionStorage.removeItem('current_user');
-      currentUser = null;
-      loadedClients = [];
-      allClients = [];
-      
-      // Ocultar todos los elementos admin
-      document.querySelectorAll('.admin-only').forEach(el => {
-        el.classList.remove('show');
-      });
-      
-      document.getElementById('loginScreen').style.display = 'flex';
-      document.getElementById('mainScreen').style.display = 'none';
-      document.getElementById('loginUsername').value = '';
-      document.getElementById('loginPassword').value = '';
-      document.getElementById('loginError').style.display = 'none';
+      location.reload();
     }
 
-    // ===================================
-    // 📑 TABS
-    // ===================================
-    function showTab(tabName) {
-      // Ocultar todos los tabs
-      document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
-      document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+    function updateUserInfo() {
+      document.getElementById('userName').textContent = currentUser.name;
+      document.getElementById('userRole').textContent = currentUser.role === 'admin' ? '👑 Admin' : '👤 Usuario';
+      document.getElementById('userCredits').textContent = currentUser.credits;
+    }
 
-      // Mostrar tab seleccionado
+    function togglePassword(fieldId) {
+      const field = document.getElementById(fieldId);
+      field.type = field.type === 'password' ? 'text' : 'password';
+    }
+
+    function switchTab(tabName) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
       event.target.classList.add('active');
-      document.getElementById(`tab-${tabName}`).classList.add('active');
-
-      // Cargar datos específicos del tab
-      if (tabName === 'templates') loadTemplates();
-      if (tabName === 'scheduler') {
-        loadTemplates();
-        loadScheduledCampaigns();
-      }
-      if (tabName === 'stats') loadDetailedStats();
-      if (tabName === 'logs') loadLogs();
-      if (tabName === 'admin' && currentUser.role === 'admin') loadUsers();
-      if (tabName === 'campaigns') loadTemplates();
-      if (tabName === 'clients') {
-        loadAllClients();
-      }
-      if (tabName === 'dashboard') {
-        loadStats();
-        loadLogs().then(() => {
-          const logs = document.getElementById('logContainer').innerHTML;
-          document.getElementById('dashboardLogs').innerHTML = logs;
-        });
-      }
-    }
-
-    // ===================================
-    // 🔧 FUNCIÓN PARA INSERTAR VARIABLES
-    // ===================================
-    function insertVariable(textareaId, variable) {
-      const textarea = document.getElementById(textareaId);
-      const startPos = textarea.selectionStart;
-      const endPos = textarea.selectionEnd;
-      const text = textarea.value;
+      document.getElementById(tabName).classList.add('active');
       
-      textarea.value = text.substring(0, startPos) + variable + text.substring(endPos);
-      textarea.focus();
-      textarea.selectionStart = textarea.selectionEnd = startPos + variable.length;
+      if (tabName === 'scheduled') loadScheduledCampaigns();
+      if (tabName === 'clients') loadClients();
+      if (tabName === 'stats') loadStats();
     }
 
-    // ===================================
     // 📝 PLANTILLAS
-    // ===================================
     async function loadTemplates() {
       try {
         const response = await fetch(`${API_BASE}/templates/${currentUser.username}`);
         const data = await response.json();
-
+        
         if (data.success) {
           const templates = data.templates;
           
-          // Actualizar lista de plantillas
+          // Actualizar selectores
+          updateTemplateSelects(templates);
+          
+          // Actualizar lista
           const list = document.getElementById('templatesList');
           if (templates.length === 0) {
-            list.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📝</div><p>No hay plantillas creadas</p></div>';
+            list.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📝</div><p>No tienes plantillas</p></div>';
           } else {
             list.innerHTML = templates.map(t => `
               <div class="template-card">
-                <div class="template-header">
+                <div style="display: flex; justify-content: space-between; align-items: start;">
                   <div>
-                    <div class="template-title">${t.name}</div>
-                    <div class="template-company">🏢 ${t.company}</div>
+                    <strong>${t.company} - ${t.name}</strong>
+                    <div style="color: #666; font-size: 0.9em; margin-top: 5px;">
+                      ${t.smsMessage ? '📱 SMS configurado' : ''} 
+                      ${t.callScript ? '📞 Llamada configurada' : ''}
+                    </div>
                   </div>
-                  <button class="btn btn-danger" onclick="deleteTemplate('${t._id}')" style="padding: 8px 15px;">
-                    🗑️ Eliminar
-                  </button>
+                  <button class="btn btn-danger" onclick="deleteTemplate('${t._id}')" style="padding: 5px 10px;">🗑️</button>
                 </div>
-                ${t.smsMessage ? `
-                  <div class="template-content">
-                    <h4>📱 Mensaje SMS:</h4>
-                    <p>${t.smsMessage}</p>
-                  </div>
-                ` : ''}
-                ${t.callScript ? `
-                  <div class="template-content">
-                    <h4>📞 Script de Llamada:</h4>
-                    <p>${t.callScript}</p>
-                  </div>
-                ` : ''}
               </div>
             `).join('');
           }
-
-          // Actualizar selectores
-          const selectors = ['campaignTemplate', 'scheduleTemplate'];
-          selectors.forEach(selectorId => {
-            const selector = document.getElementById(selectorId);
-            if (selector) {
-              selector.innerHTML = '<option value="">-- Selecciona una plantilla --</option>' +
-                templates.map(t => `<option value="${t._id}">${t.name} (${t.company})</option>`).join('');
-            }
-          });
         }
       } catch (error) {
         console.error('Error cargando plantillas:', error);
       }
     }
 
-    async function createTemplate() {
+    function updateTemplateSelects(templates) {
+      const selects = ['templateSelect', 'scheduleTemplateSelect'];
+      selects.forEach(selectId => {
+        const select = document.getElementById(selectId);
+        select.innerHTML = '<option value="">Seleccionar...</option>' + 
+          templates.map(t => `<option value="${t._id}">${t.company} - ${t.name}</option>`).join('');
+      });
+    }
+
+    async function saveTemplate() {
       const template = {
         username: currentUser.username,
+        company: document.getElementById('companyName').value,
         name: document.getElementById('templateName').value,
-        company: document.getElementById('templateCompany').value,
-        smsMessage: document.getElementById('templateSMS').value,
-        callScript: document.getElementById('templateCall').value
+        smsMessage: document.getElementById('smsMessage').value,
+        callScript: document.getElementById('callScript').value
       };
 
       if (!template.name || !template.company) {
-        alert('Completa al menos el nombre y la compañía');
+        alert('Completa nombre y compañía');
         return;
       }
 
@@ -1334,24 +931,23 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(template)
         });
-
-        const data = await response.json();
-        if (data.success) {
+        
+        if ((await response.json()).success) {
           loadTemplates();
           addLog(`Plantilla "${template.name}" creada`, 'success');
+          document.getElementById('companyName').value = '';
           document.getElementById('templateName').value = '';
-          document.getElementById('templateCompany').value = '';
-          document.getElementById('templateSMS').value = '';
-          document.getElementById('templateCall').value = '';
+          document.getElementById('smsMessage').value = '';
+          document.getElementById('callScript').value = '';
         }
       } catch (error) {
-        addLog('Error creando plantilla', 'error');
+        addLog('Error guardando plantilla', 'error');
       }
     }
 
     async function deleteTemplate(id) {
-      if (!confirm('¿Eliminar esta plantilla?')) return;
-
+      if (!confirm('¿Eliminar plantilla?')) return;
+      
       try {
         await fetch(`${API_BASE}/templates/${id}`, { method: 'DELETE' });
         loadTemplates();
@@ -1361,174 +957,208 @@
       }
     }
 
-    // ===================================
-    // 📱 CAMPAÑAS
-    // ===================================
-    function loadCSV() {
-      const file = document.getElementById('csvFile').files[0];
-      if (!file) {
-        alert('Selecciona un archivo CSV');
-        return;
+    function insertVariable(fieldId, variable) {
+      const field = document.getElementById(fieldId);
+      const start = field.selectionStart;
+      const end = field.selectionEnd;
+      field.value = field.value.substring(0, start) + variable + field.value.substring(end);
+      field.focus();
+    }
+
+    // 📂 CLIENTES
+    document.getElementById('fileInput').addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      document.getElementById('fileName').textContent = `Cargando: ${file.name}...`;
+
+      try {
+        const ext = file.name.split('.').pop().toLowerCase();
+        
+        if (ext === 'csv') {
+          Papa.parse(file, {
+            header: true,
+            skipEmptyLines: true,
+            complete: (results) => processClients(results.data, file.name)
+          });
+        } else if (ext === 'xlsx' || ext === 'xls') {
+          const data = await file.arrayBuffer();
+          const workbook = XLSX.read(data);
+          const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+          const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+          processClients(jsonData, file.name);
+        }
+      } catch (error) {
+        addLog(`Error: ${error.message}`, 'error');
       }
+    });
 
-      const reader = new FileReader();
-      reader.onload = function(e) {
-        const text = e.target.result;
-        const lines = text.split('\n').filter(line => line.trim());
-        
-        if (lines.length < 2) {
-          alert('El archivo está vacío o no tiene datos');
-          return;
-        }
-
-        // Obtener encabezados y limpiarlos
-        const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
-        
-        // Buscar índices de las columnas (sin importar mayúsculas/minúsculas/tildes)
-        const nombreIdx = headers.findIndex(h => h.includes('nombre'));
-        const telefonoIdx = headers.findIndex(h => h.includes('telefono') || h.includes('teléfono'));
-        const deudaIdx = headers.findIndex(h => h.includes('deuda'));
-        const companiaIdx = headers.findIndex(h => h.includes('compania') || h.includes('compañia') || h.includes('empresa'));
-
-        if (nombreIdx === -1 || telefonoIdx === -1) {
-          alert('❌ El CSV debe contener al menos las columnas "Nombre" y "Telefono"');
-          return;
-        }
-
-        loadedClients = [];
-        let errores = 0;
-
-        for (let i = 1; i < lines.length; i++) {
-          const values = lines[i].split(',').map(v => v.trim());
-          
-          if (values.length > nombreIdx && values.length > telefonoIdx) {
-            const cliente = {
-              Nombre: values[nombreIdx] || '',
-              Telefono: values[telefonoIdx] || '',
-              Deuda: deudaIdx !== -1 ? values[deudaIdx] : '0',
-              Compañia: companiaIdx !== -1 ? values[companiaIdx] : ''
-            };
-
-            // Validar que tenga al menos nombre y teléfono
-            if (cliente.Nombre && cliente.Telefono) {
-              loadedClients.push(cliente);
-            } else {
-              errores++;
-            }
-          } else {
-            errores++;
-          }
-        }
-
-        if (loadedClients.length === 0) {
-          alert('❌ No se pudieron cargar clientes. Verifica el formato del CSV.');
-          return;
-        }
-
-        displayLoadedClients();
-        addLog(`✅ ${loadedClients.length} clientes cargados desde CSV${errores > 0 ? ` (${errores} filas con errores)` : ''}`, 'success');
-        
-        if (errores > 0) {
-          alert(`⚠️ Se cargaron ${loadedClients.length} clientes correctamente.\n${errores} filas fueron ignoradas por falta de datos.`);
-        }
+    async function processClients(data, filename) {
+      const cleanPhone = (phone) => {
+        if (!phone) return null;
+        const cleaned = phone.toString().replace(/\D/g, '');
+        if (cleaned.length === 10) return `+52${cleaned}`;
+        if (cleaned.length === 12 && cleaned.startsWith('52')) return `+${cleaned}`;
+        return null;
       };
 
-      reader.readAsText(file);
-    }
+      clientsData = data.map(row => ({
+        Nombre: row.Nombre || row.nombre || row.name || 'Sin nombre',
+        Telefono: row.Telefono || row.telefono || row.phone || '',
+        cleanPhone: cleanPhone(row.Telefono || row.telefono || row.phone),
+        Deuda: row.Deuda || row.deuda || row.debt || '0',
+        Compañia: document.getElementById('companyName').value || 'Compañía'
+      })).filter(c => c.cleanPhone);
 
-    function displayLoadedClients() {
-      const container = document.getElementById('clientsList');
-      const count = document.getElementById('clientCount');
-      
-      count.textContent = loadedClients.length;
-
-      if (loadedClients.length === 0) {
-        container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📋</div><p>No hay clientes cargados</p></div>';
-        return;
+      // Guardar en BD
+      try {
+        await fetch(`${API_BASE}/clients/bulk`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: currentUser.username, clients: clientsData })
+        });
+      } catch (error) {
+        console.error('Error guardando clientes:', error);
       }
 
-      container.innerHTML = loadedClients.map((client, index) => `
-        <div class="client-card">
-          <div class="client-header">
-            <div>
-              <div class="client-name">${client.Nombre}</div>
-              <div class="client-info">
-                📞 ${client.Telefono} • 💰 $${client.Deuda} • 🏢 ${client.Compañia || 'N/A'}
+      document.getElementById('fileName').textContent = `✅ ${clientsData.length} clientes cargados`;
+      document.getElementById('btnSMS').disabled = false;
+      document.getElementById('btnCall').disabled = false;
+      addLog(`${clientsData.length} clientes válidos cargados`, 'success');
+      loadClients();
+    }
+
+    async function loadClients() {
+      try {
+        const response = await fetch(`${API_BASE}/clients/${currentUser.username}`);
+        const data = await response.json();
+        
+        if (data.success) {
+          loadedClients = data.clients;
+          const list = document.getElementById('clientsList');
+          
+          if (loadedClients.length === 0) {
+            list.innerHTML = '<div class="empty-state"><div class="empty-state-icon">👥</div><p>No hay clientes cargados</p></div>';
+          } else {
+            list.innerHTML = `
+              <div style="background: white; border-radius: 10px; overflow: hidden;">
+                ${loadedClients.map(c => `
+                  <div style="padding: 15px; border-bottom: 1px solid #e9ecef;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                      <div>
+                        <strong>${c.name}</strong>
+                        <div style="color: #666; font-size: 0.9em;">
+                          📱 ${c.phone} • 💰 ${c.debt} • Estado: ${c.status}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                `).join('')}
               </div>
-            </div>
-            <button class="btn btn-danger" onclick="removeClient(${index})" style="padding: 8px 15px;">
-              🗑️
-            </button>
-          </div>
-        </div>
-      `).join('');
+            `;
+          }
+        }
+      } catch (error) {
+        console.error('Error cargando clientes:', error);
+      }
     }
 
-    function removeClient(index) {
-      loadedClients.splice(index, 1);
-      displayLoadedClients();
-    }
-
-    async function sendCampaign(type) {
-      const templateId = document.getElementById('campaignTemplate').value;
-      
+    // 🚀 CAMPAÑAS INMEDIATAS
+    async function startCampaign(type) {
+      const templateId = document.getElementById('templateSelect').value;
       if (!templateId) {
         alert('Selecciona una plantilla');
         return;
       }
 
-      if (loadedClients.length === 0) {
-        alert('Primero carga clientes desde un CSV');
-        return;
-      }
-
       const costPerMessage = type === 'sms' ? 1 : 2;
-      const totalCost = loadedClients.length * costPerMessage;
+      const totalCost = clientsData.length * costPerMessage;
 
       if (currentUser.credits < totalCost) {
-        alert(`❌ Créditos insuficientes.\n\nNecesitas: ${totalCost} créditos\nTienes: ${currentUser.credits}`);
+        alert(`❌ Créditos insuficientes.\n\nNecesitas: ${totalCost}\nTienes: ${currentUser.credits}`);
         return;
       }
 
-      if (!confirm(`¿Enviar ${type === 'sms' ? 'SMS' : 'llamadas'} a ${loadedClients.length} clientes?\n\nCosto: ${totalCost} créditos`)) {
-        return;
-      }
+      if (!confirm(`🚀 Confirmar Campaña\n\n${clientsData.length} ${type === 'sms' ? 'SMS' : 'llamadas'} × ${costPerMessage} = ${totalCost} créditos\n\n¿Continuar?`)) return;
 
-      try {
-        const response = await fetch(`${API_BASE}/campaigns/send`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            username: currentUser.username,
-            templateId,
-            type,
-            clients: loadedClients
-          })
-        });
+      document.getElementById('btnSMS').disabled = true;
+      document.getElementById('btnCall').disabled = true;
+      document.getElementById('progressBar').style.display = 'block';
 
-        const data = await response.json();
-        if (data.success) {
-          addLog(`Campaña enviada: ${data.results.success} exitosos, ${data.results.errors} errores`, 'success');
-          
-          // Actualizar créditos
-          currentUser.credits = data.creditsRemaining;
-          document.getElementById('userCredits').textContent = currentUser.credits;
-          sessionStorage.setItem('current_user', JSON.stringify(currentUser));
-          
-          loadStats();
+      // Obtener plantilla
+      const templateResponse = await fetch(`${API_BASE}/templates/${currentUser.username}`);
+      const templateData = await templateResponse.json();
+      const template = templateData.templates.find(t => t._id === templateId);
+
+      let success = 0;
+      let errors = 0;
+
+      for (let i = 0; i < clientsData.length; i++) {
+        const client = clientsData[i];
+        const progress = Math.round(((i + 1) / clientsData.length) * 100);
+        document.getElementById('progressFill').style.width = `${progress}%`;
+        document.getElementById('progressFill').textContent = `${progress}%`;
+
+        try {
+          const message = replaceVariables(
+            type === 'sms' ? template.smsMessage : template.callScript,
+            client
+          );
+
+          const endpoint = type === 'sms' ? 'send-sms' : 'make-call';
+          const response = await fetch(`${API_BASE}/${endpoint}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              to: client.cleanPhone,
+              [type === 'sms' ? 'message' : 'script']: message,
+              username: currentUser.username
+            })
+          });
+
+          const result = await response.json();
+          if (result.success) {
+            success++;
+            currentUser.credits -= costPerMessage;
+            addLog(`✅ ${type === 'sms' ? 'SMS' : 'Llamada'} a ${client.Nombre} exitoso`, 'success');
+          } else {
+            errors++;
+            addLog(`❌ Error con ${client.Nombre}: ${result.error}`, 'error');
+          }
+        } catch (error) {
+          errors++;
+          addLog(`❌ Error: ${error.message}`, 'error');
         }
-      } catch (error) {
-        addLog('Error enviando campaña', 'error');
+
+        await new Promise(resolve => setTimeout(resolve, 1000));
       }
+
+      // Actualizar estadísticas
+      await fetch(`${API_BASE}/stats/${currentUser.username}/update`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          $inc: {
+            total: clientsData.length,
+            success: success,
+            errors: errors
+          }
+        })
+      });
+
+      document.getElementById('progressBar').style.display = 'none';
+      document.getElementById('btnSMS').disabled = false;
+      document.getElementById('btnCall').disabled = false;
+      updateUserInfo();
+      loadStats();
+      addLog(`📊 Campaña completada: ${success} exitosos, ${errors} errores`, 'info');
     }
 
-    // ===================================
-    // ⏰ SCHEDULER
-    // ===================================
+    // 📅 CAMPAÑAS PROGRAMADAS
     async function scheduleCampaign() {
       const name = document.getElementById('campaignName').value;
-      const templateId = document.getElementById('scheduleTemplate').value;
-      const type = document.getElementById('scheduleType').value;
+      const templateId = document.getElementById('scheduleTemplateSelect').value;
+      const type = document.getElementById('campaignType').value;
       const date = document.getElementById('scheduleDate').value;
       const time = document.getElementById('scheduleTime').value;
 
@@ -1548,32 +1178,16 @@
         return;
       }
 
-      // Guardar clientes en la base de datos primero
+      const clientIds = loadedClients.map(c => c._id);
+      const costPerMessage = type === 'sms' ? 1 : 2;
+      const totalCost = clientIds.length * costPerMessage;
+
+      if (currentUser.credits < totalCost) {
+        alert(`❌ Créditos insuficientes.\n\nSe necesitarán ${totalCost} créditos cuando se ejecute.\nTienes: ${currentUser.credits}`);
+        return;
+      }
+
       try {
-        const saveResponse = await fetch(`${API_BASE}/clients/bulk`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            username: currentUser.username,
-            clients: loadedClients
-          })
-        });
-
-        const saveData = await saveResponse.json();
-        if (!saveData.success) {
-          alert('Error guardando clientes');
-          return;
-        }
-
-        const clientIds = saveData.clientIds;
-        const costPerMessage = type === 'sms' ? 1 : 2;
-        const totalCost = clientIds.length * costPerMessage;
-
-        if (currentUser.credits < totalCost) {
-          alert(`❌ Créditos insuficientes.\n\nSe necesitarán ${totalCost} créditos cuando se ejecute.\nTienes: ${currentUser.credits}`);
-          return;
-        }
-
         const response = await fetch(`${API_BASE}/scheduled-campaigns`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -1665,257 +1279,7 @@
       }
     }
 
-    // ===================================
-    // 👥 GESTIÓN DE CLIENTES
-    // ===================================
-    async function loadAllClients() {
-      try {
-        const response = await fetch(`${API_BASE}/clients/${currentUser.username}`);
-        const data = await response.json();
-
-        if (data.success) {
-          allClients = data.clients;
-          filteredClients = [...allClients];
-          displayAllClients();
-        }
-      } catch (error) {
-        console.error('Error cargando clientes:', error);
-      }
-    }
-
-    function displayAllClients() {
-      const container = document.getElementById('clientsFullList');
-      document.getElementById('totalClients').textContent = allClients.length;
-      document.getElementById('filteredClients').textContent = filteredClients.length;
-
-      if (filteredClients.length === 0) {
-        container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">👥</div><p>No hay clientes que coincidan con los filtros</p></div>';
-        return;
-      }
-
-      container.innerHTML = filteredClients.map(client => {
-        const statusClass = `status-${client.status}`;
-        const statusText = {
-          pending: '⏳ Pendiente',
-          contacted: '📞 Contactado',
-          promised: '🤝 Promesa de Pago',
-          paid: '✅ Pagado',
-          dispute: '⚠️ En Disputa'
-        }[client.status];
-
-        const lastContact = client.lastContact 
-          ? new Date(client.lastContact).toLocaleDateString('es-MX')
-          : 'Nunca';
-
-        return `
-          <div class="client-card">
-            <div class="client-header">
-              <div>
-                <div class="client-name">${client.name}</div>
-                <div class="client-info">
-                  📞 ${client.phone} • 💰 $${client.debt} ${client.company ? `• 🏢 ${client.company}` : ''}
-                  <br>
-                  📅 Último contacto: ${lastContact} • Agregado: ${new Date(client.createdAt).toLocaleDateString('es-MX')}
-                </div>
-                ${client.notes ? `<div style="margin-top: 8px; padding: 8px; background: #f8f9fa; border-radius: 5px; font-size: 0.9em;">📝 ${client.notes}</div>` : ''}
-              </div>
-              <span class="status-badge ${statusClass}">${statusText}</span>
-            </div>
-            <div class="client-actions">
-              <button class="btn btn-primary" onclick="updateClientStatus('${client._id}')">
-                🔄 Cambiar Estado
-              </button>
-              <button class="btn btn-warning" onclick="addClientNote('${client._id}')">
-                📝 Añadir Nota
-              </button>
-              <button class="btn btn-danger" onclick="deleteClient('${client._id}')">
-                🗑️ Eliminar
-              </button>
-            </div>
-          </div>
-        `;
-      }).join('');
-    }
-
-    function applyFilters() {
-      const status = document.getElementById('filterStatus').value;
-      const dateFrom = document.getElementById('filterDateFrom').value;
-      const dateTo = document.getElementById('filterDateTo').value;
-      const name = document.getElementById('filterName').value.toLowerCase();
-
-      filteredClients = allClients.filter(client => {
-        // Filtro por estado
-        if (status && client.status !== status) return false;
-
-        // Filtro por nombre
-        if (name && !client.name.toLowerCase().includes(name)) return false;
-
-        // Filtro por rango de fechas (fecha de creación)
-        if (dateFrom || dateTo) {
-          const clientDate = new Date(client.createdAt);
-          
-          if (dateFrom) {
-            const fromDate = new Date(dateFrom);
-            fromDate.setHours(0, 0, 0, 0);
-            if (clientDate < fromDate) return false;
-          }
-          
-          if (dateTo) {
-            const toDate = new Date(dateTo);
-            toDate.setHours(23, 59, 59, 999);
-            if (clientDate > toDate) return false;
-          }
-        }
-
-        return true;
-      });
-
-      displayAllClients();
-      addLog(`Filtros aplicados: ${filteredClients.length} de ${allClients.length} clientes`, 'info');
-    }
-
-    function clearFilters() {
-      document.getElementById('filterStatus').value = '';
-      document.getElementById('filterDateFrom').value = '';
-      document.getElementById('filterDateTo').value = '';
-      document.getElementById('filterName').value = '';
-      
-      filteredClients = [...allClients];
-      displayAllClients();
-      addLog('Filtros limpiados', 'info');
-    }
-
-    async function updateClientStatus(clientId) {
-      const newStatus = prompt('Nuevo estado:\n\npending = Pendiente\ncontacted = Contactado\npromised = Promesa de Pago\npaid = Pagado\ndispute = En Disputa\n\nIngresa uno de los valores:');
-      
-      if (!newStatus) return;
-      
-      const validStatuses = ['pending', 'contacted', 'promised', 'paid', 'dispute'];
-      if (!validStatuses.includes(newStatus)) {
-        alert('Estado inválido');
-        return;
-      }
-
-      try {
-        const response = await fetch(`${API_BASE}/clients/${clientId}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ status: newStatus })
-        });
-
-        const data = await response.json();
-        if (data.success) {
-          loadAllClients();
-          addLog('Estado del cliente actualizado', 'success');
-        }
-      } catch (error) {
-        addLog('Error actualizando cliente', 'error');
-      }
-    }
-
-    async function addClientNote(clientId) {
-      const note = prompt('Añadir nota al cliente:');
-      if (!note) return;
-
-      try {
-        const response = await fetch(`${API_BASE}/clients/${clientId}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ notes: note })
-        });
-
-        const data = await response.json();
-        if (data.success) {
-          loadAllClients();
-          addLog('Nota añadida al cliente', 'success');
-        }
-      } catch (error) {
-        addLog('Error añadiendo nota', 'error');
-      }
-    }
-
-    async function deleteClient(clientId) {
-      if (!confirm('¿Eliminar este cliente?')) return;
-
-      try {
-        await fetch(`${API_BASE}/clients/${clientId}`, { method: 'DELETE' });
-        loadAllClients();
-        addLog('Cliente eliminado', 'info');
-      } catch (error) {
-        console.error('Error:', error);
-      }
-    }
-
-    // ===================================
-    // 📊 EXPORTAR A EXCEL
-    // ===================================
-    function exportToExcel() {
-      if (allClients.length === 0) {
-        alert('No hay clientes para exportar');
-        return;
-      }
-
-      exportClientsToExcel(allClients, 'todos_los_clientes');
-    }
-
-    function exportFilteredToExcel() {
-      if (filteredClients.length === 0) {
-        alert('No hay clientes filtrados para exportar');
-        return;
-      }
-
-      exportClientsToExcel(filteredClients, 'clientes_filtrados');
-    }
-
-    function exportClientsToExcel(clients, filename) {
-      // Preparar datos para Excel
-      const excelData = clients.map(client => ({
-        'Nombre': client.name,
-        'Teléfono': client.phone,
-        'Deuda': client.debt,
-        'Compañía': client.company || '',
-        'Estado': {
-          pending: 'Pendiente',
-          contacted: 'Contactado',
-          promised: 'Promesa de Pago',
-          paid: 'Pagado',
-          dispute: 'En Disputa'
-        }[client.status],
-        'Último Contacto': client.lastContact 
-          ? new Date(client.lastContact).toLocaleDateString('es-MX')
-          : 'Nunca',
-        'Fecha de Registro': new Date(client.createdAt).toLocaleDateString('es-MX'),
-        'Notas': client.notes || ''
-      }));
-
-      // Crear libro de Excel
-      const ws = XLSX.utils.json_to_sheet(excelData);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, 'Clientes');
-
-      // Ajustar ancho de columnas
-      const colWidths = [
-        { wch: 25 }, // Nombre
-        { wch: 15 }, // Teléfono
-        { wch: 12 }, // Deuda
-        { wch: 20 }, // Compañía
-        { wch: 18 }, // Estado
-        { wch: 18 }, // Último Contacto
-        { wch: 18 }, // Fecha Registro
-        { wch: 40 }  // Notas
-      ];
-      ws['!cols'] = colWidths;
-
-      // Descargar archivo
-      const timestamp = new Date().toISOString().slice(0, 10);
-      XLSX.writeFile(wb, `${filename}_${timestamp}.xlsx`);
-
-      addLog(`Excel exportado: ${clients.length} clientes`, 'success');
-    }
-
-    // ===================================
     // 📊 ESTADÍSTICAS
-    // ===================================
     async function loadStats() {
       try {
         const response = await fetch(`${API_BASE}/stats/${currentUser.username}`);
@@ -1933,48 +1297,7 @@
       }
     }
 
-    async function loadDetailedStats() {
-      try {
-        const response = await fetch(`${API_BASE}/stats/${currentUser.username}`);
-        const data = await response.json();
-
-        if (data.success) {
-          const stats = data.stats;
-          
-          document.getElementById('statDetailTotal').textContent = stats.total;
-          document.getElementById('statDetailSuccess').textContent = stats.success;
-          document.getElementById('statDetailErrors').textContent = stats.errors;
-          document.getElementById('statDetailPending').textContent = stats.pending;
-          
-          document.getElementById('statCallAnswered').textContent = stats.callAnswered || 0;
-          document.getElementById('statCallRejected').textContent = stats.callRejected || 0;
-          document.getElementById('statCallBusy').textContent = stats.callBusy || 0;
-          document.getElementById('statCallNoAnswer').textContent = stats.callNoAnswer || 0;
-
-          // Calcular tasas
-          const successRate = stats.total > 0 
-            ? ((stats.success / stats.total) * 100).toFixed(1)
-            : 0;
-          const errorRate = stats.total > 0 
-            ? ((stats.errors / stats.total) * 100).toFixed(1)
-            : 0;
-
-          document.getElementById('successRate').textContent = `${successRate}%`;
-          document.getElementById('errorRate').textContent = `${errorRate}%`;
-
-          const lastUpdate = stats.lastUpdated 
-            ? new Date(stats.lastUpdated).toLocaleString('es-MX')
-            : 'Nunca';
-          document.getElementById('lastUpdate').textContent = lastUpdate;
-        }
-      } catch (error) {
-        console.error('Error cargando estadísticas detalladas:', error);
-      }
-    }
-
-    // ===================================
     // 📋 LOGS
-    // ===================================
     async function loadLogs() {
       try {
         const response = await fetch(`${API_BASE}/logs/${currentUser.username}`);
@@ -1986,9 +1309,8 @@
             container.innerHTML = '<div class="log-entry log-info">ℹ️ Sistema iniciado</div>';
           } else {
             container.innerHTML = data.logs.map(log => {
-              const time = new Date(log.timestamp).toLocaleTimeString('es-MX');
-              const date = new Date(log.timestamp).toLocaleDateString('es-MX');
-              return `<div class="log-entry log-${log.type}">[${date} ${time}] ${log.message}</div>`;
+              const time = new Date(log.timestamp).toLocaleTimeString();
+              return `<div class="log-entry log-${log.type}">[${time}] ${log.message}</div>`;
             }).join('');
           }
         }
@@ -2014,9 +1336,7 @@
       }
     }
 
-    // ===================================
     // 👥 ADMINISTRACIÓN
-    // ===================================
     async function loadUsers() {
       try {
         const response = await fetch(`${API_BASE}/users`);
@@ -2096,9 +1416,16 @@
       }
     }
 
-    // ===================================
+    // 🛠️ UTILIDADES
+    function replaceVariables(text, client) {
+      return text
+        .replace(/\{Nombre\}/g, client.Nombre || client.name)
+        .replace(/\{Telefono\}/g, client.Telefono || client.phone)
+        .replace(/\{Deuda\}/g, client.Deuda || client.debt)
+        .replace(/\{Compañia\}/g, client.Compañia || client.company);
+    }
+
     // 🚀 INICIALIZAR
-    // ===================================
     window.onload = function() {
       const sessionUser = sessionStorage.getItem('current_user');
       if (sessionUser) {
@@ -2111,15 +1438,107 @@
       const today = now.toISOString().split('T')[0];
       const currentTime = now.toTimeString().slice(0, 5);
       
-      const scheduleDate = document.getElementById('scheduleDate');
-      const scheduleTime = document.getElementById('scheduleTime');
-      
-      if (scheduleDate && scheduleTime) {
-        scheduleDate.min = today;
-        scheduleDate.value = today;
-        scheduleTime.value = currentTime;
-      }
+      document.getElementById('scheduleDate').min = today;
+      document.getElementById('scheduleDate').value = today;
+      document.getElementById('scheduleTime').value = currentTime;
     };
+  
+    // 📊 FUNCIONES DE EXPORTACIÓN A EXCEL
+
+function exportClientsToExcel() {
+  if (!loadedClients || loadedClients.length === 0) {
+    alert('No hay clientes para exportar');
+    return;
+  }
+
+  const excelData = loadedClients.map(client => ({
+    'Nombre': client.name || '',
+    'Teléfono': client.phone || '',
+    'Deuda': client.debt || '0',
+    'Compañía': client.company || '',
+    'Estado': client.status || 'pending',
+    'Último Contacto': client.lastContact 
+      ? new Date(client.lastContact).toLocaleDateString('es-MX')
+      : 'Nunca',
+    'Fecha de Registro': client.createdAt 
+      ? new Date(client.createdAt).toLocaleDateString('es-MX')
+      : '',
+    'Notas': client.notes || ''
+  }));
+
+  const ws = XLSX.utils.json_to_sheet(excelData);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Clientes');
+
+  // Ajustar ancho de columnas
+  ws['!cols'] = [
+    { wch: 25 }, // Nombre
+    { wch: 15 }, // Teléfono
+    { wch: 12 }, // Deuda
+    { wch: 20 }, // Compañía
+    { wch: 15 }, // Estado
+    { wch: 18 }, // Último Contacto
+    { wch: 18 }, // Fecha Registro
+    { wch: 40 }  // Notas
+  ];
+
+  const timestamp = new Date().toISOString().slice(0, 10);
+  XLSX.writeFile(wb, `clientes_${timestamp}.xlsx`);
+
+  addLog(`📊 Excel exportado: ${loadedClients.length} clientes`);
+}
+
+function exportFilteredToExcel() {
+  // Por ahora exporta todos, puedes agregar lógica de filtros después
+  const statusFilter = prompt('Filtrar por estado (pending/contacted/promised/paid/dispute) o deja vacío para todos:');
+  
+  let filtered = loadedClients;
+  
+  if (statusFilter && statusFilter.trim()) {
+    filtered = loadedClients.filter(c => c.status === statusFilter.trim().toLowerCase());
+  }
+
+  if (filtered.length === 0) {
+    alert('No hay clientes que coincidan con el filtro');
+    return;
+  }
+
+  const excelData = filtered.map(client => ({
+    'Nombre': client.name || '',
+    'Teléfono': client.phone || '',
+    'Deuda': client.debt || '0',
+    'Compañía': client.company || '',
+    'Estado': client.status || 'pending',
+    'Último Contacto': client.lastContact 
+      ? new Date(client.lastContact).toLocaleDateString('es-MX')
+      : 'Nunca',
+    'Fecha de Registro': client.createdAt 
+      ? new Date(client.createdAt).toLocaleDateString('es-MX')
+      : '',
+    'Notas': client.notes || ''
+  }));
+
+  const ws = XLSX.utils.json_to_sheet(excelData);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Clientes Filtrados');
+
+  ws['!cols'] = [
+    { wch: 25 },
+    { wch: 15 },
+    { wch: 12 },
+    { wch: 20 },
+    { wch: 15 },
+    { wch: 18 },
+    { wch: 18 },
+    { wch: 40 }
+  ];
+
+  const timestamp = new Date().toISOString().slice(0, 10);
+  XLSX.writeFile(wb, `clientes_filtrados_${timestamp}.xlsx`);
+
+  addLog(`📊 Excel exportado: ${filtered.length} clientes filtrados`);
+}
+
   </script>
 </body>
 </html>
