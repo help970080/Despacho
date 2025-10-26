@@ -574,11 +574,30 @@
         </div>
 
         <div class="section">
+      <!-- TAB: CAMPAÑAS -->
+      <div class="tab-content active" id="campaign">
+        <div class="info-banner">
+          <span style="font-size: 1.5em;">🚀</span>
+          <div>
+            <strong>Envío Inmediato:</strong> Ejecuta campañas de SMS o llamadas al instante.
+          </div>
+        </div>
+
+        <div class="section">
           <h2>📂 Cargar Clientes</h2>
           <input type="file" id="fileInput" accept=".csv,.xlsx,.xls" style="display:none">
           <button class="btn btn-primary" onclick="document.getElementById('fileInput').click()">
             📄 Seleccionar Archivo CSV/Excel
           </button>
+          
+          <!-- NUEVO: Checkbox para agregar sin borrar -->
+          <div style="margin-top: 15px;">
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+              <input type="checkbox" id="appendMode" style="width: 18px; height: 18px; cursor: pointer;">
+              <span>➕ Agregar a los existentes (no borrar clientes anteriores)</span>
+            </label>
+          </div>
+          
           <div id="fileName" style="margin-top: 10px; color: #666;"></div>
         </div>
 
@@ -608,7 +627,6 @@
           <div class="log-container" id="logContainer"></div>
         </div>
       </div>
-
       <!-- TAB: CAMPAÑAS PROGRAMADAS -->
       <div class="tab-content" id="scheduled">
         <div class="info-banner">
@@ -694,14 +712,65 @@
         </div>
       </div>
 
+
       <!-- TAB: CLIENTES -->
       <div class="tab-content" id="clients">
         <div class="section">
           <h2>👥 Gestión de Clientes</h2>
+          
+          <!-- NUEVO: Filtros y Exportar -->
+          <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+            <h3 style="margin-bottom: 15px; color: #667eea;">🔍 Filtros y Exportación</h3>
+            
+            <div class="two-columns" style="margin-bottom: 15px;">
+              <div class="form-group" style="margin-bottom: 0;">
+                <label>📅 Desde:</label>
+                <input type="date" id="filterDateFrom">
+              </div>
+              <div class="form-group" style="margin-bottom: 0;">
+                <label>📅 Hasta:</label>
+                <input type="date" id="filterDateTo">
+              </div>
+            </div>
+            
+            <div class="two-columns" style="margin-bottom: 15px;">
+              <div class="form-group" style="margin-bottom: 0;">
+                <label>🏷️ Estado:</label>
+                <select id="filterStatus">
+                  <option value="">Todos los estados</option>
+                  <option value="pending">⏳ Pendiente</option>
+                  <option value="contacted">📞 Contactado</option>
+                  <option value="promised">🤝 Prometió pagar</option>
+                  <option value="paid">✅ Pagado</option>
+                  <option value="dispute">⚠️ Disputa</option>
+                </select>
+              </div>
+              <div class="form-group" style="margin-bottom: 0;">
+                <label>🔍 Buscar por nombre:</label>
+                <input type="text" id="filterName" placeholder="Escribe un nombre...">
+              </div>
+            </div>
+            
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+              <button class="btn btn-primary" onclick="applyFilters()">
+                🔍 Aplicar Filtros
+              </button>
+              <button class="btn" style="background: #6c757d; color: white;" onclick="clearFilters()">
+                🔄 Limpiar Filtros
+              </button>
+              <button class="btn btn-success" onclick="exportToExcel()">
+                📊 Exportar a Excel
+              </button>
+            </div>
+            
+            <div id="filterStats" style="margin-top: 15px; padding: 10px; background: white; border-radius: 5px; display: none;">
+              <strong>📊 Resultados:</strong> <span id="filterCount">0</span> clientes
+            </div>
+          </div>
+          
           <div id="clientsList"></div>
         </div>
       </div>
-
       <!-- TAB: ESTADÍSTICAS -->
       <div class="tab-content" id="stats">
         <div class="stats-grid">
@@ -949,6 +1018,255 @@
       }
     }
 
+    // 👥 GESTIÓN DE CLIENTES MEJORADA
+    let allClientsList = []; // Guardar todos los clientes para filtrado
+    
+    async function loadClients() {
+      try {
+        const response = await fetch(`${API_BASE}/clients/${currentUser.username}`);
+        const data = await response.json();
+        
+        if (data.success) {
+          allClientsList = data.clients;
+          displayClients(allClientsList);
+        }
+      } catch (error) {
+        console.error('Error cargando clientes:', error);
+      }
+    }
+    
+    function displayClients(clients) {
+      const list = document.getElementById('clientsList');
+      
+      if (clients.length === 0) {
+        list.innerHTML = '<div class="empty-state"><div class="empty-state-icon">👥</div><p>No hay clientes cargados</p></div>';
+        return;
+      }
+      
+      // Estadísticas por estado
+      const stats = {
+        pending: clients.filter(c => c.status === 'pending').length,
+        contacted: clients.filter(c => c.status === 'contacted').length,
+        promised: clients.filter(c => c.status === 'promised').length,
+        paid: clients.filter(c => c.status === 'paid').length,
+        dispute: clients.filter(c => c.status === 'dispute').length
+      };
+      
+      const statsHTML = `
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 20px; padding: 15px; background: white; border-radius: 10px;">
+          <div style="text-align: center; padding: 10px;">
+            <div style="font-size: 2em;">⏳</div>
+            <div style="font-weight: bold; font-size: 1.5em;">${stats.pending}</div>
+            <div style="color: #666; font-size: 0.9em;">Pendientes</div>
+          </div>
+          <div style="text-align: center; padding: 10px;">
+            <div style="font-size: 2em;">📞</div>
+            <div style="font-weight: bold; font-size: 1.5em;">${stats.contacted}</div>
+            <div style="color: #666; font-size: 0.9em;">Contactados</div>
+          </div>
+          <div style="text-align: center; padding: 10px;">
+            <div style="font-size: 2em;">🤝</div>
+            <div style="font-weight: bold; font-size: 1.5em;">${stats.promised}</div>
+            <div style="color: #666; font-size: 0.9em;">Prometieron</div>
+          </div>
+          <div style="text-align: center; padding: 10px;">
+            <div style="font-size: 2em;">✅</div>
+            <div style="font-weight: bold; font-size: 1.5em;">${stats.paid}</div>
+            <div style="color: #666; font-size: 0.9em;">Pagados</div>
+          </div>
+          <div style="text-align: center; padding: 10px;">
+            <div style="font-size: 2em;">⚠️</div>
+            <div style="font-weight: bold; font-size: 1.5em;">${stats.dispute}</div>
+            <div style="color: #666; font-size: 0.9em;">Disputa</div>
+          </div>
+        </div>
+      `;
+      
+      const statusEmoji = {
+        pending: '⏳',
+        contacted: '📞',
+        promised: '🤝',
+        paid: '✅',
+        dispute: '⚠️'
+      };
+      
+      const statusText = {
+        pending: 'Pendiente',
+        contacted: 'Contactado',
+        promised: 'Prometió pagar',
+        paid: 'Pagado',
+        dispute: 'Disputa'
+      };
+      
+      list.innerHTML = statsHTML + clients.map(c => `
+        <div class="client-card" style="background: white; padding: 15px; border-radius: 10px; margin-bottom: 10px; border-left: 4px solid #667eea;">
+          <div style="display: flex; justify-content: space-between; align-items: start;">
+            <div style="flex: 1;">
+              <div style="font-weight: bold; font-size: 1.1em; margin-bottom: 5px;">
+                ${c.name}
+              </div>
+              <div style="color: #666; font-size: 0.9em;">
+                📱 ${c.phone} • 💰 $${c.debt} ${c.company ? `• 🏢 ${c.company}` : ''}
+              </div>
+              <div style="margin-top: 8px;">
+                <span style="background: #e9ecef; padding: 4px 10px; border-radius: 15px; font-size: 0.85em;">
+                  ${statusEmoji[c.status]} ${statusText[c.status]}
+                </span>
+                ${c.lastContact ? `
+                  <span style="color: #666; font-size: 0.85em; margin-left: 10px;">
+                    📅 Último contacto: ${new Date(c.lastContact).toLocaleDateString('es-MX')}
+                  </span>
+                ` : ''}
+              </div>
+            </div>
+            <button class="btn btn-danger" onclick="deleteClient('${c._id}')" style="padding: 6px 12px; font-size: 0.85em;">
+              🗑️
+            </button>
+          </div>
+        </div>
+      `).join('');
+    }
+    
+    async function deleteClient(id) {
+      if (!confirm('¿Eliminar este cliente?')) return;
+      
+      try {
+        await fetch(`${API_BASE}/clients/${id}`, { method: 'DELETE' });
+        loadClients();
+        addLog('Cliente eliminado', 'info');
+      } catch (error) {
+        console.error('Error:', error);
+      }
+    }
+    
+    // 🔍 FILTROS
+    function applyFilters() {
+      const dateFrom = document.getElementById('filterDateFrom').value;
+      const dateTo = document.getElementById('filterDateTo').value;
+      const status = document.getElementById('filterStatus').value;
+      const name = document.getElementById('filterName').value.toLowerCase();
+      
+      let filtered = [...allClientsList];
+      
+      // Filtrar por fecha
+      if (dateFrom) {
+        filtered = filtered.filter(c => {
+          if (!c.lastContact) return false;
+          return new Date(c.lastContact) >= new Date(dateFrom);
+        });
+      }
+      
+      if (dateTo) {
+        filtered = filtered.filter(c => {
+          if (!c.lastContact) return false;
+          return new Date(c.lastContact) <= new Date(dateTo + 'T23:59:59');
+        });
+      }
+      
+      // Filtrar por estado
+      if (status) {
+        filtered = filtered.filter(c => c.status === status);
+      }
+      
+      // Filtrar por nombre
+      if (name) {
+        filtered = filtered.filter(c => c.name.toLowerCase().includes(name));
+      }
+      
+      displayClients(filtered);
+      
+      // Mostrar estadísticas de filtrado
+      const statsDiv = document.getElementById('filterStats');
+      const countSpan = document.getElementById('filterCount');
+      countSpan.textContent = filtered.length;
+      statsDiv.style.display = 'block';
+    }
+    
+    function clearFilters() {
+      document.getElementById('filterDateFrom').value = '';
+      document.getElementById('filterDateTo').value = '';
+      document.getElementById('filterStatus').value = '';
+      document.getElementById('filterName').value = '';
+      document.getElementById('filterStats').style.display = 'none';
+      displayClients(allClientsList);
+    }
+    
+    // 📊 EXPORTAR A EXCEL
+    function exportToExcel() {
+      const dateFrom = document.getElementById('filterDateFrom').value;
+      const dateTo = document.getElementById('filterDateTo').value;
+      const status = document.getElementById('filterStatus').value;
+      const name = document.getElementById('filterName').value.toLowerCase();
+      
+      let clientsToExport = [...allClientsList];
+      
+      // Aplicar los mismos filtros
+      if (dateFrom) {
+        clientsToExport = clientsToExport.filter(c => {
+          if (!c.lastContact) return false;
+          return new Date(c.lastContact) >= new Date(dateFrom);
+        });
+      }
+      
+      if (dateTo) {
+        clientsToExport = clientsToExport.filter(c => {
+          if (!c.lastContact) return false;
+          return new Date(c.lastContact) <= new Date(dateTo + 'T23:59:59');
+        });
+      }
+      
+      if (status) {
+        clientsToExport = clientsToExport.filter(c => c.status === status);
+      }
+      
+      if (name) {
+        clientsToExport = clientsToExport.filter(c => c.name.toLowerCase().includes(name));
+      }
+      
+      if (clientsToExport.length === 0) {
+        alert('No hay clientes para exportar con los filtros aplicados');
+        return;
+      }
+      
+      // Crear CSV
+      const statusText = {
+        pending: 'Pendiente',
+        contacted: 'Contactado',
+        promised: 'Prometió pagar',
+        paid: 'Pagado',
+        dispute: 'Disputa'
+      };
+      
+      const headers = ['Nombre', 'Telefono', 'Deuda', 'Compañia', 'Estado', 'Ultimo Contacto'];
+      const csvContent = [
+        headers.join(','),
+        ...clientsToExport.map(c => [
+          `"${c.name}"`,
+          c.phone,
+          c.debt,
+          `"${c.company || ''}"`,
+          statusText[c.status],
+          c.lastContact ? new Date(c.lastContact).toLocaleDateString('es-MX') : ''
+        ].join(','))
+      ].join('\n');
+      
+      // Descargar archivo
+      const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      
+      const fecha = new Date().toISOString().split('T')[0];
+      link.setAttribute('href', url);
+      link.setAttribute('download', `clientes_${fecha}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      addLog(`✅ Exportados ${clientsToExport.length} clientes a Excel`, 'success');
+    }
+
+
     function insertVariable(fieldId, variable) {
       const field = document.getElementById(fieldId);
       const start = field.selectionStart;
@@ -1048,6 +1366,114 @@
                 `).join('')}
               </div>
             `;
+
+    // 📂 CARGAR ARCHIVO CON MODO APPEND
+    document.getElementById('fileInput').addEventListener('change', async function(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      
+      document.getElementById('fileName').textContent = `📄 ${file.name}`;
+      const appendMode = document.getElementById('appendMode').checked;
+      
+      if (appendMode) {
+        document.getElementById('fileName').innerHTML = `📄 ${file.name} <strong style="color: #10b981;">✓ Modo: Agregar sin borrar</strong>`;
+      }
+      
+      try {
+        let data;
+        if (file.name.endsWith('.csv')) {
+          data = await parseCSV(file);
+        } else {
+          data = await parseExcel(file);
+        }
+        
+        if (data.length === 0) {
+          alert('El archivo no contiene datos válidos');
+          return;
+        }
+        
+        clientsData = data.map(row => ({
+          Nombre: row.Nombre || row.nombre || row.name || '',
+          Telefono: (row.Telefono || row.telefono || row.phone || '').toString().replace(/\D/g, ''),
+          cleanPhone: '+52' + (row.Telefono || row.telefono || row.phone || '').toString().replace(/\D/g, ''),
+          Deuda: row.Deuda || row.deuda || row.debt || '0',
+          Compañia: row.Compañia || row.compañia || row.company || row.Compania || ''
+        })).filter(c => c.Nombre && c.Telefono);
+        
+        // Si NO está en modo append, borrar los clientes anteriores
+        if (!appendMode) {
+          try {
+            await fetch(`${API_BASE}/clients/user/${currentUser.username}`, { method: 'DELETE' });
+          } catch (error) {
+            console.error('Error limpiando clientes:', error);
+          }
+        }
+        
+        // Guardar en la base de datos
+        const response = await fetch(`${API_BASE}/clients/bulk`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            username: currentUser.username,
+            clients: clientsData
+          })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          const mensaje = appendMode 
+            ? `✅ ${result.count} clientes agregados exitosamente`
+            : `✅ ${result.count} clientes cargados exitosamente`;
+          alert(mensaje);
+          addLog(mensaje, 'success');
+          
+          // Cargar los clientes para la campaña
+          loadedClients = result.clients || clientsData;
+          document.getElementById('btnSMS').disabled = false;
+          document.getElementById('btnCall').disabled = false;
+          
+          // Recargar la lista de clientes
+          loadClients();
+        } else {
+          alert('Error cargando clientes: ' + result.error);
+        }
+      } catch (error) {
+        console.error('Error procesando archivo:', error);
+        alert('Error procesando el archivo: ' + error.message);
+      }
+    });
+    
+    function parseCSV(file) {
+      return new Promise((resolve, reject) => {
+        Papa.parse(file, {
+          header: true,
+          skipEmptyLines: true,
+          complete: results => resolve(results.data),
+          error: error => reject(error)
+        });
+      });
+    }
+    
+    function parseExcel(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          try {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+            const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+            resolve(jsonData);
+          } catch (error) {
+            reject(error);
+          }
+        };
+        reader.onerror = error => reject(error);
+        reader.readAsArrayBuffer(file);
+      });
+    }
+
           }
         }
       } catch (error) {
