@@ -1,0 +1,86 @@
+# ===============================================
+# .gitignore - Sistema de Cobranza Twilio
+# ===============================================
+
+# 🔐 Variables de entorno (CRÍTICO - NUNCA SUBIR)
+.env
+.env.local
+.env.development
+.env.production
+.env.test
+*.env
+
+# 📦 Dependencias
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# 🗂️ Logs
+logs/
+*.log
+
+# 💾 Sistema Operativo
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# 🔧 IDEs y Editores
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+*.sublime-project
+*.sublime-workspace
+
+# 🏗️ Build y compilación
+dist/
+build/
+out/
+*.tsbuildinfo
+
+# 🧪 Testing
+coverage/
+.nyc_output/
+
+# 📝 Temporales
+tmp/
+temp/
+*.tmp
+
+# 🔑 Certificados y claves
+*.pem
+*.key
+*.cert
+*.crt
+
+# 📊 Bases de datos locales
+*.sqlite
+*.sqlite3
+*.db
+
+# 🎯 Archivos de configuración local
+config.local.js
+config.local.json
+
+# ⚠️ Archivos sensibles adicionales
+credentials.json
+secrets.json
+private/
+
+# 🚫 No ignorar estos archivos importantes
+!.env.example
+!.gitignore

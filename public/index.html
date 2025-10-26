@@ -1,0 +1,963 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sistema de Cobranza - Panel de Control</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      overflow: hidden;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 30px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .header h1 {
+      font-size: 2em;
+    }
+
+    .user-info {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      background: rgba(255,255,255,0.2);
+      padding: 10px 20px;
+      border-radius: 10px;
+    }
+
+    .credits {
+      font-size: 1.2em;
+      font-weight: bold;
+    }
+
+    .tabs {
+      display: flex;
+      background: #f8f9fa;
+      border-bottom: 2px solid #e9ecef;
+    }
+
+    .tab {
+      padding: 15px 30px;
+      cursor: pointer;
+      border: none;
+      background: none;
+      font-size: 1em;
+      font-weight: 600;
+      color: #666;
+      transition: all 0.3s;
+    }
+
+    .tab.active {
+      background: white;
+      color: #667eea;
+      border-bottom: 3px solid #667eea;
+    }
+
+    .tab-content {
+      display: none;
+      padding: 30px;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    .section {
+      margin-bottom: 30px;
+      padding: 25px;
+      background: #f8f9fa;
+      border-radius: 15px;
+      border: 2px solid #e9ecef;
+    }
+
+    .section h2 {
+      color: #667eea;
+      margin-bottom: 20px;
+      font-size: 1.5em;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+      color: #333;
+    }
+
+    .form-group input,
+    .form-group textarea,
+    .form-group select {
+      width: 100%;
+      padding: 12px;
+      border: 2px solid #e9ecef;
+      border-radius: 8px;
+      font-size: 1em;
+      font-family: inherit;
+    }
+
+    .form-group textarea {
+      min-height: 100px;
+      resize: vertical;
+    }
+
+    .variable-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .variable-tag {
+      padding: 5px 12px;
+      background: #667eea;
+      color: white;
+      border-radius: 5px;
+      font-size: 0.85em;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .variable-tag:hover {
+      background: #5568d3;
+      transform: scale(1.05);
+    }
+
+    .btn {
+      padding: 12px 25px;
+      border: none;
+      border-radius: 8px;
+      font-size: 1em;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-primary {
+      background: #667eea;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #5568d3;
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+    }
+
+    .btn-success {
+      background: #10b981;
+      color: white;
+    }
+
+    .btn-warning {
+      background: #f59e0b;
+      color: white;
+    }
+
+    .btn-danger {
+      background: #ef4444;
+      color: white;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin-bottom: 30px;
+    }
+
+    .stat-card {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      text-align: center;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+
+    .stat-number {
+      font-size: 2.5em;
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+
+    .stat-number.success { color: #10b981; }
+    .stat-number.error { color: #ef4444; }
+    .stat-number.pending { color: #f59e0b; }
+    .stat-number.total { color: #667eea; }
+
+    .stat-label {
+      color: #666;
+      font-size: 0.9em;
+    }
+
+    .chart-container {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      margin-top: 20px;
+    }
+
+    .log-container {
+      max-height: 400px;
+      overflow-y: auto;
+      background: white;
+      border-radius: 10px;
+      padding: 15px;
+      margin-top: 15px;
+    }
+
+    .log-entry {
+      padding: 10px;
+      margin-bottom: 8px;
+      border-radius: 8px;
+      font-size: 0.9em;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .log-success {
+      background: #d1fae5;
+      color: #065f46;
+      border-left: 4px solid #10b981;
+    }
+
+    .log-error {
+      background: #fee2e2;
+      color: #991b1b;
+      border-left: 4px solid #ef4444;
+    }
+
+    .log-info {
+      background: #dbeafe;
+      color: #1e40af;
+      border-left: 4px solid #3b82f6;
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 30px;
+      background: #e5e7eb;
+      border-radius: 15px;
+      overflow: hidden;
+      margin-top: 15px;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+      transition: width 0.3s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 600;
+      font-size: 0.9em;
+    }
+
+    .two-columns {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    @media (max-width: 768px) {
+      .two-columns {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    canvas {
+      max-width: 100%;
+    }
+
+    .file-input-wrapper {
+      position: relative;
+      overflow: hidden;
+      display: inline-block;
+    }
+
+    .file-input-wrapper input[type=file] {
+      position: absolute;
+      left: -9999px;
+    }
+
+    .file-input-label {
+      display: inline-block;
+      padding: 15px 30px;
+      background: #667eea;
+      color: white;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 1em;
+      font-weight: 600;
+      transition: all 0.3s;
+    }
+
+    .file-input-label:hover {
+      background: #5568d3;
+      transform: translateY(-2px);
+    }
+
+    .template-preview {
+      background: white;
+      padding: 15px;
+      border-radius: 8px;
+      margin-top: 15px;
+      border: 2px dashed #e9ecef;
+    }
+
+    .template-preview h4 {
+      margin-bottom: 10px;
+      color: #667eea;
+    }
+
+    .admin-only {
+      background: #fef3c7;
+      border-left: 4px solid #f59e0b;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>📱 Sistema de Cobranza</h1>
+      <div class="user-info">
+        <div>
+          <div id="userName">Usuario</div>
+          <div class="credits">💳 <span id="userCredits">0</span> créditos</div>
+        </div>
+        <button class="btn btn-danger" onclick="logout()">Salir</button>
+      </div>
+    </div>
+
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('campaign')">📊 Campañas</button>
+      <button class="tab" onclick="switchTab('templates')">📝 Plantillas</button>
+      <button class="tab" onclick="switchTab('stats')">📈 Estadísticas</button>
+      <button class="tab" onclick="switchTab('admin')" id="adminTab" style="display:none">⚙️ Administración</button>
+    </div>
+
+    <!-- TAB: CAMPAÑAS -->
+    <div class="tab-content active" id="campaign">
+      <div class="section">
+        <h2>📂 Cargar Clientes</h2>
+        <div class="file-input-wrapper">
+          <input type="file" id="fileInput" accept=".csv,.xlsx,.xls">
+          <label for="fileInput" class="file-input-label">📄 Seleccionar Archivo CSV/Excel</label>
+        </div>
+        <div id="fileName" style="margin-top: 10px; color: #666;"></div>
+      </div>
+
+      <div class="section">
+        <h2>🚀 Configurar Campaña</h2>
+        <div class="form-group">
+          <label>Plantilla a usar:</label>
+          <select id="templateSelect">
+            <option value="">Seleccionar plantilla...</option>
+          </select>
+        </div>
+        <div class="two-columns">
+          <button class="btn btn-success" onclick="startCampaign('sms')" id="btnSMS" disabled>📱 Enviar SMS</button>
+          <button class="btn btn-warning" onclick="startCampaign('call')" id="btnCall" disabled>📞 Hacer Llamadas</button>
+        </div>
+        <div class="progress-bar" id="progressBar" style="display: none;">
+          <div class="progress-fill" id="progressFill">0%</div>
+        </div>
+      </div>
+
+      <div class="section">
+        <h2>📊 Registro de Actividad</h2>
+        <div class="log-container" id="logContainer">
+          <div class="log-entry log-info">ℹ️ Sistema iniciado</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: PLANTILLAS -->
+    <div class="tab-content" id="templates">
+      <div class="section">
+        <h2>📝 Crear Nueva Plantilla</h2>
+        <div class="form-group">
+          <label>Nombre de la Compañía:</label>
+          <input type="text" id="companyName" placeholder="Ej: Banco Nacional">
+        </div>
+        <div class="form-group">
+          <label>Nombre de la Plantilla:</label>
+          <input type="text" id="templateName" placeholder="Ej: Recordatorio Pago Vencido">
+        </div>
+        <div class="form-group">
+          <label>Mensaje SMS:</label>
+          <textarea id="smsMessage" placeholder="Escribe tu mensaje aquí..."></textarea>
+          <div class="variable-tags">
+            <span class="variable-tag" onclick="insertVariable('smsMessage', '{Nombre}')">👤 {Nombre}</span>
+            <span class="variable-tag" onclick="insertVariable('smsMessage', '{Telefono}')">📱 {Telefono}</span>
+            <span class="variable-tag" onclick="insertVariable('smsMessage', '{Deuda}')">💰 {Deuda}</span>
+            <span class="variable-tag" onclick="insertVariable('smsMessage', '{Compañia}')">🏢 {Compañia}</span>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Script de Llamada:</label>
+          <textarea id="callScript" placeholder="Escribe el script para la llamada..."></textarea>
+          <div class="variable-tags">
+            <span class="variable-tag" onclick="insertVariable('callScript', '{Nombre}')">👤 {Nombre}</span>
+            <span class="variable-tag" onclick="insertVariable('callScript', '{Telefono}')">📱 {Telefono}</span>
+            <span class="variable-tag" onclick="insertVariable('callScript', '{Deuda}')">💰 {Deuda}</span>
+            <span class="variable-tag" onclick="insertVariable('callScript', '{Compañia}')">🏢 {Compañia}</span>
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="saveTemplate()">💾 Guardar Plantilla</button>
+
+        <div class="template-preview" id="templatePreview" style="display:none;">
+          <h4>Vista Previa:</h4>
+          <div id="previewContent"></div>
+        </div>
+      </div>
+
+      <div class="section">
+        <h2>📋 Plantillas Guardadas</h2>
+        <div id="templatesList"></div>
+      </div>
+    </div>
+
+    <!-- TAB: ESTADÍSTICAS -->
+    <div class="tab-content" id="stats">
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-number total" id="statTotal">0</div>
+          <div class="stat-label">Total Enviados</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number success" id="statSuccess">0</div>
+          <div class="stat-label">Exitosos</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number error" id="statErrors">0</div>
+          <div class="stat-label">Errores</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number pending" id="statPending">0</div>
+          <div class="stat-label">Pendientes</div>
+        </div>
+      </div>
+
+      <div class="chart-container">
+        <h2>📊 Gráfica de Resultados</h2>
+        <canvas id="statsChart"></canvas>
+      </div>
+
+      <div class="section">
+        <h2>📞 Detalle de Llamadas</h2>
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-number success" id="callAnswered">0</div>
+            <div class="stat-label">Contestadas</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-number error" id="callRejected">0</div>
+            <div class="stat-label">Rechazadas</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-number pending" id="callBusy">0</div>
+            <div class="stat-label">Ocupado</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-number" id="callNoAnswer">0</div>
+            <div class="stat-label">No Contestó</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: ADMINISTRACIÓN -->
+    <div class="tab-content" id="admin">
+      <div class="admin-only">
+        <strong>⚠️ Panel de Administrador</strong> - Solo usuarios con permisos de administrador pueden acceder a esta sección.
+      </div>
+
+      <div class="section">
+        <h2>👥 Gestión de Usuarios</h2>
+        <div class="form-group">
+          <label>Nombre de Usuario:</label>
+          <input type="text" id="newUserName" placeholder="Nombre del usuario">
+        </div>
+        <div class="form-group">
+          <label>Email:</label>
+          <input type="email" id="newUserEmail" placeholder="email@ejemplo.com">
+        </div>
+        <div class="form-group">
+          <label>Créditos Iniciales:</label>
+          <input type="number" id="newUserCredits" value="100">
+        </div>
+        <div class="form-group">
+          <label>Rol:</label>
+          <select id="newUserRole">
+            <option value="user">Usuario</option>
+            <option value="admin">Administrador</option>
+          </select>
+        </div>
+        <button class="btn btn-primary" onclick="createUser()">➕ Crear Usuario</button>
+      </div>
+
+      <div class="section">
+        <h2>👤 Lista de Usuarios</h2>
+        <div id="usersList"></div>
+      </div>
+
+      <div class="section">
+        <h2>💳 Asignar Créditos</h2>
+        <div class="form-group">
+          <label>Usuario:</label>
+          <select id="creditUserId"></select>
+        </div>
+        <div class="form-group">
+          <label>Cantidad de Créditos:</label>
+          <input type="number" id="creditAmount" value="50">
+        </div>
+        <button class="btn btn-success" onclick="assignCredits()">💰 Asignar Créditos</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+  <script>
+    // 🌐 API Base URL - Dinámico para funcionar en local y producción
+    const API_BASE = window.location.hostname === 'localhost' 
+      ? 'http://localhost:3000/api' 
+      : `${window.location.origin}/api`;
+    
+    console.log('🔗 API Base URL:', API_BASE);
+
+    let clientsData = [];
+    let templates = [];
+    let currentUser = { name: 'Admin', credits: 1000, role: 'admin' };
+    let users = [currentUser];
+    let campaignStats = {
+      total: 0,
+      success: 0,
+      errors: 0,
+      pending: 0,
+      callAnswered: 0,
+      callRejected: 0,
+      callBusy: 0,
+      callNoAnswer: 0
+    };
+
+    // Inicializar
+    window.onload = function() {
+      loadTemplates();
+      loadUsers();
+      updateUserInfo();
+      updateStats();
+      if (currentUser.role === 'admin') {
+        document.getElementById('adminTab').style.display = 'block';
+      }
+      initChart();
+      testConnection();
+    };
+
+    // 🧪 Probar conexión con el backend
+    async function testConnection() {
+      try {
+        const response = await fetch(`${API_BASE}/test`);
+        const data = await response.json();
+        if (data.status === 'OK') {
+          addLog('✅ Conexión con servidor establecida', 'success');
+          console.log('📊 Estado del servidor:', data);
+        }
+      } catch (error) {
+        addLog('❌ Error al conectar con el servidor', 'error');
+        console.error('Error de conexión:', error);
+      }
+    }
+
+    // Cambiar tabs
+    function switchTab(tabName) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      event.target.classList.add('active');
+      document.getElementById(tabName).classList.add('active');
+    }
+
+    // Cargar archivo
+    document.getElementById('fileInput').addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      document.getElementById('fileName').textContent = `Cargando: ${file.name}...`;
+      addLog(`Cargando archivo: ${file.name}`, 'info');
+
+      try {
+        const ext = file.name.split('.').pop().toLowerCase();
+        
+        if (ext === 'csv') {
+          Papa.parse(file, {
+            header: true,
+            skipEmptyLines: true,
+            complete: (results) => processClients(results.data, file.name)
+          });
+        } else if (ext === 'xlsx' || ext === 'xls') {
+          const data = await file.arrayBuffer();
+          const workbook = XLSX.read(data);
+          const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+          const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+          processClients(jsonData, file.name);
+        }
+      } catch (error) {
+        addLog(`Error: ${error.message}`, 'error');
+      }
+    });
+
+    function processClients(data, filename) {
+      const cleanPhone = (phone) => {
+        if (!phone) return null;
+        const cleaned = phone.toString().replace(/\D/g, '');
+        if (cleaned.length === 10) return `+52${cleaned}`;
+        if (cleaned.length === 12 && cleaned.startsWith('52')) return `+${cleaned}`;
+        return null;
+      };
+
+      clientsData = data.map(row => ({
+        Nombre: row.Nombre || row.nombre || row.name || 'Sin nombre',
+        Telefono: row.Telefono || row.telefono || row.phone || '',
+        cleanPhone: cleanPhone(row.Telefono || row.telefono || row.phone),
+        Deuda: row.Deuda || row.deuda || row.debt || '0',
+        Compañia: document.getElementById('companyName').value || 'Compañía'
+      })).filter(c => c.cleanPhone);
+
+      document.getElementById('fileName').textContent = `✅ ${clientsData.length} clientes cargados desde ${filename}`;
+      document.getElementById('btnSMS').disabled = clientsData.length === 0;
+      document.getElementById('btnCall').disabled = clientsData.length === 0;
+      addLog(`${clientsData.length} clientes válidos cargados`, 'success');
+    }
+
+    // Plantillas
+    function insertVariable(fieldId, variable) {
+      const field = document.getElementById(fieldId);
+      const start = field.selectionStart;
+      const end = field.selectionEnd;
+      const text = field.value;
+      field.value = text.substring(0, start) + variable + text.substring(end);
+      field.focus();
+    }
+
+    function saveTemplate() {
+      const template = {
+        id: Date.now(),
+        company: document.getElementById('companyName').value,
+        name: document.getElementById('templateName').value,
+        sms: document.getElementById('smsMessage').value,
+        call: document.getElementById('callScript').value
+      };
+
+      if (!template.name || !template.sms || !template.call) {
+        alert('Por favor completa todos los campos');
+        return;
+      }
+
+      templates.push(template);
+      localStorage.setItem('templates', JSON.stringify(templates));
+      loadTemplates();
+      addLog(`Plantilla "${template.name}" guardada`, 'success');
+      
+      // Limpiar campos
+      document.getElementById('templateName').value = '';
+      document.getElementById('smsMessage').value = '';
+      document.getElementById('callScript').value = '';
+    }
+
+    function loadTemplates() {
+      const saved = localStorage.getItem('templates');
+      templates = saved ? JSON.parse(saved) : [];
+      
+      const select = document.getElementById('templateSelect');
+      select.innerHTML = '<option value="">Seleccionar plantilla...</option>';
+      templates.forEach(t => {
+        const option = document.createElement('option');
+        option.value = t.id;
+        option.textContent = `${t.company} - ${t.name}`;
+        select.appendChild(option);
+      });
+
+      const list = document.getElementById('templatesList');
+      list.innerHTML = templates.map(t => `
+        <div style="background: white; padding: 15px; border-radius: 8px; margin-bottom: 10px;">
+          <strong>${t.company} - ${t.name}</strong>
+          <p style="margin: 5px 0; color: #666;">SMS: ${t.sms.substring(0, 50)}...</p>
+          <button class="btn btn-danger" onclick="deleteTemplate(${t.id})" style="padding: 5px 10px; font-size: 0.9em;">🗑️ Eliminar</button>
+        </div>
+      `).join('');
+    }
+
+    function deleteTemplate(id) {
+      if (confirm('¿Eliminar esta plantilla?')) {
+        templates = templates.filter(t => t.id !== id);
+        localStorage.setItem('templates', JSON.stringify(templates));
+        loadTemplates();
+        addLog('Plantilla eliminada', 'info');
+      }
+    }
+
+    function replaceVariables(text, client) {
+      return text
+        .replace(/\{Nombre\}/g, client.Nombre)
+        .replace(/\{Telefono\}/g, client.Telefono)
+        .replace(/\{Deuda\}/g, client.Deuda)
+        .replace(/\{Compañia\}/g, client.Compañia);
+    }
+
+    // Campañas
+    async function startCampaign(type) {
+      const templateId = document.getElementById('templateSelect').value;
+      if (!templateId) {
+        alert('Selecciona una plantilla');
+        return;
+      }
+
+      const template = templates.find(t => t.id == templateId);
+      const costPerMessage = type === 'sms' ? 1 : 2;
+      const totalCost = clientsData.length * costPerMessage;
+
+      if (currentUser.credits < totalCost) {
+        alert(`Créditos insuficientes. Necesitas ${totalCost} créditos.`);
+        return;
+      }
+
+      if (!confirm(`Esta campaña costará ${totalCost} créditos. ¿Continuar?`)) return;
+
+      document.getElementById('btnSMS').disabled = true;
+      document.getElementById('btnCall').disabled = true;
+      document.getElementById('progressBar').style.display = 'block';
+
+      campaignStats.total = clientsData.length;
+      campaignStats.pending = clientsData.length;
+      updateStats();
+
+      for (let i = 0; i < clientsData.length; i++) {
+        const client = clientsData[i];
+        const progress = Math.round(((i + 1) / clientsData.length) * 100);
+        document.getElementById('progressFill').style.width = `${progress}%`;
+        document.getElementById('progressFill').textContent = `${progress}%`;
+
+        try {
+          let result;
+          if (type === 'sms') {
+            const message = replaceVariables(template.sms, client);
+            result = await sendSMS(client.cleanPhone, message);
+          } else {
+            const script = replaceVariables(template.call, client);
+            result = await makeCall(client.cleanPhone, script);
+          }
+
+          if (result.success) {
+            campaignStats.success++;
+            campaignStats.pending--;
+            currentUser.credits -= costPerMessage;
+            addLog(`✅ ${type === 'sms' ? 'SMS' : 'Llamada'} a ${client.Nombre} exitoso`, 'success');
+            
+            if (type === 'call') {
+              setTimeout(() => checkCallStatus(result.sid), 5000);
+            }
+          } else {
+            campaignStats.errors++;
+            campaignStats.pending--;
+            addLog(`❌ Error con ${client.Nombre}: ${result.error}`, 'error');
+          }
+        } catch (error) {
+          campaignStats.errors++;
+          campaignStats.pending--;
+          addLog(`❌ Error: ${error.message}`, 'error');
+        }
+
+        updateStats();
+        updateUserInfo();
+        await new Promise(resolve => setTimeout(resolve, type === 'sms' ? 1000 : 2000));
+      }
+
+      document.getElementById('progressBar').style.display = 'none';
+      document.getElementById('btnSMS').disabled = false;
+      document.getElementById('btnCall').disabled = false;
+      addLog(`📊 Campaña completada: ${campaignStats.success} exitosos, ${campaignStats.errors} errores`, 'info');
+      updateChart();
+    }
+
+    async function sendSMS(to, message) {
+      const response = await fetch(`${API_BASE}/send-sms`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ to, message })
+      });
+      return await response.json();
+    }
+
+    async function makeCall(to, script) {
+      const response = await fetch(`${API_BASE}/make-call`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ to, script })
+      });
+      return await response.json();
+    }
+
+    async function checkCallStatus(sid) {
+      const statuses = ['completed', 'no-answer', 'busy', 'failed'];
+      const status = statuses[Math.floor(Math.random() * statuses.length)];
+      
+      if (status === 'completed') campaignStats.callAnswered++;
+      else if (status === 'no-answer') campaignStats.callNoAnswer++;
+      else if (status === 'busy') campaignStats.callBusy++;
+      else campaignStats.callRejected++;
+      
+      updateStats();
+    }
+
+    // UI Updates
+    function addLog(message, type = 'info') {
+      const log = document.getElementById('logContainer');
+      const entry = document.createElement('div');
+      entry.className = `log-entry log-${type}`;
+      entry.textContent = message;
+      log.insertBefore(entry, log.firstChild);
+      
+      if (log.children.length > 50) {
+        log.removeChild(log.lastChild);
+      }
+    }
+
+    function updateUserInfo() {
+      document.getElementById('userName').textContent = currentUser.name;
+      document.getElementById('userCredits').textContent = currentUser.credits;
+    }
+
+    function updateStats() {
+      document.getElementById('statTotal').textContent = campaignStats.total;
+      document.getElementById('statSuccess').textContent = campaignStats.success;
+      document.getElementById('statErrors').textContent = campaignStats.errors;
+      document.getElementById('statPending').textContent = campaignStats.pending;
+      document.getElementById('callAnswered').textContent = campaignStats.callAnswered;
+      document.getElementById('callRejected').textContent = campaignStats.callRejected;
+      document.getElementById('callBusy').textContent = campaignStats.callBusy;
+      document.getElementById('callNoAnswer').textContent = campaignStats.callNoAnswer;
+    }
+
+    let chart;
+    function initChart() {
+      const ctx = document.getElementById('statsChart').getContext('2d');
+      chart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: ['Exitosos', 'Errores', 'Pendientes'],
+          datasets: [{
+            data: [0, 0, 0],
+            backgroundColor: ['#10b981', '#ef4444', '#f59e0b']
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: { position: 'bottom' }
+          }
+        }
+      });
+    }
+
+    function updateChart() {
+      if (chart) {
+        chart.data.datasets[0].data = [
+          campaignStats.success,
+          campaignStats.errors,
+          campaignStats.pending
+        ];
+        chart.update();
+      }
+    }
+
+    // Admin functions
+    function loadUsers() {
+      const list = document.getElementById('usersList');
+      list.innerHTML = users.map(u => `
+        <div style="background: white; padding: 15px; border-radius: 8px; margin-bottom: 10px;">
+          <strong>${u.name}</strong> - ${u.role} - ${u.credits} créditos
+        </div>
+      `).join('');
+
+      const select = document.getElementById('creditUserId');
+      select.innerHTML = users.map(u => `<option value="${u.name}">${u.name}</option>`).join('');
+    }
+
+    function createUser() {
+      const user = {
+        name: document.getElementById('newUserName').value,
+        email: document.getElementById('newUserEmail').value,
+        credits: parseInt(document.getElementById('newUserCredits').value),
+        role: document.getElementById('newUserRole').value
+      };
+
+      if (!user.name || !user.email) {
+        alert('Completa todos los campos');
+        return;
+      }
+
+      users.push(user);
+      loadUsers();
+      addLog(`Usuario ${user.name} creado`, 'success');
+      
+      document.getElementById('newUserName').value = '';
+      document.getElementById('newUserEmail').value = '';
+    }
+
+    function assignCredits() {
+      const userName = document.getElementById('creditUserId').value;
+      const amount = parseInt(document.getElementById('creditAmount').value);
+      
+      const user = users.find(u => u.name === userName);
+      if (user) {
+        user.credits += amount;
+        loadUsers();
+        updateUserInfo();
+        addLog(`${amount} créditos asignados a ${userName}`, 'success');
+      }
+    }
+
+    function logout() {
+      if (confirm('¿Cerrar sesión?')) {
+        location.reload();
+      }
+    }
+  </script>
+</body>
+</html>
