@@ -436,6 +436,16 @@ app.post('/api/logs', async (req, res) => {
 // FUNCIONES DE ENVIO - BROADCASTER
 async function sendBroadcasterSMS(phoneNumber, message) {
   try {
+    // Verificar IP publica
+    try {
+      const ipCheck = await axios.get('https://api.ipify.org?format=json');
+      console.log('===========================================');
+      console.log('MI IP PUBLICA (SALIDA A INTERNET):', ipCheck.data.ip);
+      console.log('===========================================');
+    } catch (e) {
+      console.log('No se pudo obtener IP:', e.message);
+    }
+
     let cleanNumber = phoneNumber.replace(/\D/g, '');
     if (cleanNumber.startsWith('52')) {
       cleanNumber = cleanNumber.substring(2);
@@ -488,8 +498,8 @@ async function sendBroadcasterCall(phoneNumber, message) {
     }, {
       headers: {
         'Content-Type': 'application/json',
-        'api-key': BROADCASTER_API_KEY,
-        'Authorization': BROADCASTER_AUTHORIZATION
+        'apiKey': BROADCASTER_API_KEY,
+        'Authorization': `Bearer ${BROADCASTER_AUTHORIZATION}`
       }
     });
 
@@ -837,14 +847,23 @@ function replaceVariables(text, client) {
     .replace(/\{Deuda\}/g, client.Deuda || client.debt)
     .replace(/\{Compañia\}/g, client.Compañia || client.company);
 }
-// RUTAS FRONTEND
-app.get('/', (req, res) => {
-```
 
-### **4. Guarda el archivo**
-```
-Ctrl + S  (Windows/Linux)
-Cmd + S   (Mac)
+// Endpoint para verificar IP publica
+app.get('/api/check-ip', async (req, res) => {
+  try {
+    const ipifyResponse = await axios.get('https://api.ipify.org?format=json');
+    res.json({ 
+      render_outbound_ip: ipifyResponse.data.ip,
+      request_ip: req.ip,
+      x_forwarded_for: req.headers['x-forwarded-for'],
+      x_real_ip: req.headers['x-real-ip'],
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    res.json({ error: error.message });
+  }
+});
+
 // RUTAS FRONTEND
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
@@ -861,48 +880,6 @@ app.get('/api/test', (req, res) => {
       broadcaster: 'Configurado'
     }
   });
-});
-
-// ===================================
-// 🌐 ENDPOINT PARA VERIFICAR IP PÚBLICA
-// ===================================
-// Este endpoint te muestra tu IP pública para configurarla en Broadcaster
-app.get('/api/check-ip', async (req, res) => {
-  try {
-    const ipifyResponse = await axios.get('https://api.ipify.org?format=json');
-    res.json({ 
-      render_outbound_ip: ipifyResponse.data.ip,
-      request_ip: req.ip,
-      x_forwarded_for: req.headers['x-forwarded-for'],
-      x_real_ip: req.headers['x-real-ip'],
-      timestamp: new Date().toISOString(),
-      nota: 'La IP render_outbound_ip es la que debes enviar a Broadcaster'
-    });
-  } catch (error) {
-    res.json({ error: error.message });
-  }
-});
-
-
-
-// ===================================
-// 🌐 ENDPOINT PARA VERIFICAR IP PÚBLICA
-// ===================================
-// Este endpoint te muestra tu IP pública para configurarla en Broadcaster
-app.get('/api/check-ip', async (req, res) => {
-  try {
-    const ipifyResponse = await axios.get('https://api.ipify.org?format=json');
-    res.json({ 
-      render_outbound_ip: ipifyResponse.data.ip,
-      request_ip: req.ip,
-      x_forwarded_for: req.headers['x-forwarded-for'],
-      x_real_ip: req.headers['x-real-ip'],
-      timestamp: new Date().toISOString(),
-      nota: 'La IP render_outbound_ip es la que debes enviar a Broadcaster'
-    });
-  } catch (error) {
-    res.json({ error: error.message });
-  }
 });
 
 // INICIAR SERVIDOR
