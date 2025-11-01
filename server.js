@@ -837,7 +837,31 @@ function replaceVariables(text, client) {
     .replace(/\{Deuda\}/g, client.Deuda || client.debt)
     .replace(/\{Compañia\}/g, client.Compañia || client.company);
 }
+// Endpoint para verificar IP publica
+app.get('/api/check-ip', async (req, res) => {
+  try {
+    const ipifyResponse = await axios.get('https://api.ipify.org?format=json');
+    res.json({ 
+      render_outbound_ip: ipifyResponse.data.ip,
+      request_ip: req.ip,
+      x_forwarded_for: req.headers['x-forwarded-for'],
+      x_real_ip: req.headers['x-real-ip'],
+      timestamp: new Date().toISOString(),
+      nota: 'La IP render_outbound_ip es la que debes enviar a Broadcaster'
+    });
+  } catch (error) {
+    res.json({ error: error.message });
+  }
+});
 
+// RUTAS FRONTEND
+app.get('/', (req, res) => {
+```
+
+### **4. Guarda el archivo**
+```
+Ctrl + S  (Windows/Linux)
+Cmd + S   (Mac)
 // RUTAS FRONTEND
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
