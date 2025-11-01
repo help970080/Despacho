@@ -590,6 +590,14 @@
               <option value="">Seleccionar plantilla...</option>
             </select>
           </div>
+          <!-- NUEVO: Selector de Proveedor para campaña inmediata -->
+<div class="form-group">
+  <label>🔌 Proveedor</label>
+  <select id="campaignProvider">
+    <option value="twilio">Twilio</option>
+    <option value="broadcaster" selected>Broadcaster</option>
+  </select>
+</div>
           <div class="two-columns">
             <button class="btn btn-success" onclick="startCampaign('sms')" id="btnSMS" disabled>
               📱 Enviar SMS Ahora
@@ -646,7 +654,14 @@
             ⏰ Programar Campaña
           </button>
         </div>
-
+<!-- NUEVO: Selector de Proveedor -->
+<div class="form-group">
+  <label>🔌 Proveedor</label>
+  <select id="scheduleCampaignProvider">
+    <option value="twilio">Twilio</option>
+    <option value="broadcaster" selected>Broadcaster</option>
+  </select>
+</div>
         <div class="section">
           <h2>📋 Campañas Programadas</h2>
           <div id="scheduledList"></div>
@@ -882,19 +897,21 @@
             list.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📝</div><p>No tienes plantillas</p></div>';
           } else {
             list.innerHTML = templates.map(t => `
-              <div class="template-card">
-                <div style="display: flex; justify-content: space-between; align-items: start;">
-                  <div>
-                    <strong>${t.company} - ${t.name}</strong>
-                    <div style="color: #666; font-size: 0.9em; margin-top: 5px;">
-                      ${t.smsMessage ? '📱 SMS configurado' : ''} 
-                      ${t.callScript ? '📞 Llamada configurada' : ''}
-                    </div>
-                  </div>
-                  <button class="btn btn-danger" onclick="deleteTemplate('${t._id}')" style="padding: 5px 10px;">🗑️</button>
-                </div>
-              </div>
-            `).join('');
+  <div class="template-card">
+    <div style="display: flex; justify-content: space-between; align-items: start;">
+      <div>
+        <strong>${t.company} - ${t.name}</strong>
+        <div style="color: #666; font-size: 0.9em; margin-top: 5px;">
+          ${t.smsMessage ? '📱 SMS configurado' : ''} 
+          ${t.callScript ? '📞 Llamada configurada' : ''}
+          <!-- 🆕 NUEVO -->
+          <br>🔌 Proveedor: ${t.provider === 'broadcaster' ? '📡 Broadcaster' : '📞 Twilio'}
+        </div>
+      </div>
+      <button class="btn btn-danger" onclick="deleteTemplate('${t._id}')" style="padding: 5px 10px;">🗑️</button>
+    </div>
+  </div>
+`).join('');
           }
         }
       } catch (error) {
@@ -910,40 +927,52 @@
           templates.map(t => `<option value="${t._id}">${t.company} - ${t.name}</option>`).join('');
       });
     }
-
+<!-- NUEVO: Selector de Proveedor -->
+<div class="form-group">
+  <label>🔌 Proveedor de Mensajería</label>
+  <select id="templateProvider">
+    <option value="twilio">Twilio (con webhooks en tiempo real)</option>
+    <option value="broadcaster" selected>Broadcaster (recomendado)</option>
+  </select>
+  <small style="color: #666; display: block; margin-top: 5px;">
+    Twilio: tracking en tiempo real • Broadcaster: más económico
+  </small>
+</div>
     async function saveTemplate() {
-      const template = {
-        username: currentUser.username,
-        company: document.getElementById('companyName').value,
-        name: document.getElementById('templateName').value,
-        smsMessage: document.getElementById('smsMessage').value,
-        callScript: document.getElementById('callScript').value
-      };
+  const template = {
+    username: currentUser.username,
+    company: document.getElementById('companyName').value,
+    name: document.getElementById('templateName').value,
+    smsMessage: document.getElementById('smsMessage').value,
+    callScript: document.getElementById('callScript').value,
+    provider: document.getElementById('templateProvider').value // 🆕 NUEVO
+  };
 
-      if (!template.name || !template.company) {
-        alert('Completa nombre y compañía');
-        return;
-      }
+  if (!template.name || !template.company) {
+    alert('Completa nombre y compañía');
+    return;
+  }
 
-      try {
-        const response = await fetch(`${API_BASE}/templates`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(template)
-        });
-        
-        if ((await response.json()).success) {
-          loadTemplates();
-          addLog(`Plantilla "${template.name}" creada`, 'success');
-          document.getElementById('companyName').value = '';
-          document.getElementById('templateName').value = '';
-          document.getElementById('smsMessage').value = '';
-          document.getElementById('callScript').value = '';
-        }
-      } catch (error) {
-        addLog('Error guardando plantilla', 'error');
-      }
+  try {
+    const response = await fetch(`${API_BASE}/templates`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(template)
+    });
+    
+    if ((await response.json()).success) {
+      loadTemplates();
+      addLog(`Plantilla "${template.name}" creada con ${template.provider}`, 'success');
+      document.getElementById('companyName').value = '';
+      document.getElementById('templateName').value = '';
+      document.getElementById('smsMessage').value = '';
+      document.getElementById('callScript').value = '';
+      document.getElementById('templateProvider').value = 'broadcaster'; // Reset
     }
+  } catch (error) {
+    addLog('Error guardando plantilla', 'error');
+  }
+}
 
     async function deleteTemplate(id) {
       if (!confirm('¿Eliminar plantilla?')) return;
@@ -1105,16 +1134,18 @@
             client
           );
 
-          const endpoint = type === 'sms' ? 'send-sms' : 'make-call';
-          const response = await fetch(`${API_BASE}/${endpoint}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              to: client.cleanPhone,
-              [type === 'sms' ? 'message' : 'script']: message,
-              username: currentUser.username
-            })
-          });
+          // Dentro del loop, modificar el fetch:
+const endpoint = type === 'sms' ? 'send-sms' : 'make-call';
+const response = await fetch(`${API_BASE}/${endpoint}`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    to: client.cleanPhone,
+    [type === 'sms' ? 'message' : 'script']: message,
+    username: currentUser.username,
+    provider: document.getElementById('campaignProvider').value // 🆕 NUEVO
+  })
+});
 
           const result = await response.json();
           if (result.success) {
@@ -1188,18 +1219,19 @@
       }
 
       try {
-        const response = await fetch(`${API_BASE}/scheduled-campaigns`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            username: currentUser.username,
-            name,
-            templateId,
-            type,
-            scheduledDate: scheduledDate.toISOString(),
-            clientIds
-          })
-        });
+       const response = await fetch(`${API_BASE}/scheduled-campaigns`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    username: currentUser.username,
+    name,
+    templateId,
+    type,
+    scheduledDate: scheduledDate.toISOString(),
+    clientIds,
+    provider: document.getElementById('scheduleCampaignProvider').value // 🆕 NUEVO
+  })
+});
 
         const data = await response.json();
         if (data.success) {
@@ -1242,11 +1274,13 @@
                     <div>
                       <div class="campaign-title">${c.name}</div>
                       <div class="campaign-meta">
-                        📅 ${scheduledDate.toLocaleDateString('es-MX')} a las ${scheduledDate.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}
-                        <br>
-                        ${c.type === 'sms' ? '📱 SMS' : '📞 Llamada'} • ${c.results.total} clientes
-                        ${c.status === 'completed' ? `• ${c.results.success} exitosos, ${c.results.errors} errores` : ''}
-                      </div>
+  📅 ${scheduledDate.toLocaleDateString('es-MX')} a las ${scheduledDate.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}
+  <br>
+  ${c.type === 'sms' ? '📱 SMS' : '📞 Llamada'} • ${c.results.total} clientes
+  <!-- 🆕 NUEVO -->
+  <br>🔌 ${c.provider === 'broadcaster' ? 'Broadcaster' : 'Twilio'}
+  ${c.status === 'completed' ? `• ${c.results.success} exitosos, ${c.results.errors} errores` : ''}
+</div>
                     </div>
                     <span class="campaign-status ${statusClass}">${statusText}</span>
                   </div>

@@ -1,0 +1,36 @@
+# ===================================
+# 🗄️ BASE DE DATOS
+# ===================================
+MONGODB_URI=mongodb://localhost:27017/cobranza-system
+# O para MongoDB Atlas:
+# MONGODB_URI=mongodb+srv://usuario:password@cluster.mongodb.net/cobranza-system
+
+# ===================================
+# 🌐 SERVIDOR
+# ===================================
+PORT=3000
+BASE_URL=http://localhost:3000
+# En producción (Render):
+# RENDER_EXTERNAL_URL=https://tu-app.onrender.com
+
+# ===================================
+# 📱 TWILIO (Opcional - Sistema Híbrido)
+# ===================================
+TWILIO_ACCOUNT_SID=tu_account_sid_aqui
+TWILIO_AUTH_TOKEN=tu_auth_token_aqui
+TWILIO_PHONE_SMS=+1234567890
+TWILIO_PHONE_CALL=+1234567890
+
+# ===================================
+# 📱 BROADCASTER (Configurado por defecto)
+# ===================================
+BROADCASTER_API_KEY=5031
+BROADCASTER_AUTHORIZATION=qNYY7U54Bb3rsG0VZu8on7bzE+w=
+
+# ===================================
+# NOTAS:
+# ===================================
+# - El sistema funciona con AMBOS proveedores simultáneamente
+# - Broadcaster está configurado por defecto con tus credenciales
+# - Twilio es opcional: si no lo configuras, solo usarás Broadcaster
+# - Puedes elegir el proveedor en cada campaña desde la interfaz

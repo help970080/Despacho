@@ -1,6 +1,7 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const twilio = require('twilio');
+const axios = require('axios');
 const cors = require('cors');
 const path = require('path');
 const bcrypt = require('bcryptjs');
@@ -42,6 +43,7 @@ const templateSchema = new mongoose.Schema({
   name: { type: String, required: true },
   smsMessage: String,
   callScript: String,
+  provider: { type: String, enum: ['twilio', 'broadcaster'], default: 'twilio' }, // 🆕 Proveedor
   createdAt: { type: Date, default: Date.now },
   updatedAt: Date
 });
@@ -70,6 +72,7 @@ const scheduledCampaignSchema = new mongoose.Schema({
   name: { type: String, required: true },
   templateId: { type: mongoose.Schema.Types.ObjectId, ref: 'Template' },
   type: { type: String, enum: ['sms', 'call'], required: true },
+  provider: { type: String, enum: ['twilio', 'broadcaster'], default: 'twilio' }, // 🆕 Proveedor
   scheduledDate: { type: Date, required: true },
   clients: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Client' }],
   status: { 
@@ -148,16 +151,23 @@ const TWILIO_PHONE_SMS = process.env.TWILIO_PHONE_SMS;
 const TWILIO_PHONE_CALL = process.env.TWILIO_PHONE_CALL;
 const BASE_URL = process.env.RENDER_EXTERNAL_URL || process.env.BASE_URL || `http://localhost:${process.env.PORT || 3000}`;
 
-if (!ACCOUNT_SID || !AUTH_TOKEN || !TWILIO_PHONE_SMS || !TWILIO_PHONE_CALL) {
-  console.error('❌ ERROR: Faltan variables de entorno de Twilio');
-  console.log('Variables recibidas:');
-  console.log('ACCOUNT_SID:', ACCOUNT_SID ? 'Definido' : 'No definido');
-  console.log('AUTH_TOKEN:', AUTH_TOKEN ? 'Definido' : 'No definido');
-  console.log('TWILIO_PHONE_SMS:', TWILIO_PHONE_SMS ? 'Definido' : 'No definido');
-  console.log('TWILIO_PHONE_CALL:', TWILIO_PHONE_CALL ? 'Definido' : 'No definido');
+let twilioClient = null;
+if (ACCOUNT_SID && AUTH_TOKEN) {
+  twilioClient = twilio(ACCOUNT_SID, AUTH_TOKEN);
+  console.log('✅ Twilio configurado');
+} else {
+  console.log('⚠️ Twilio no configurado (variables de entorno faltantes)');
 }
 
-const client = twilio(ACCOUNT_SID, AUTH_TOKEN);
+// ===================================
+// ⚙️ CONFIGURACIÓN BROADCASTER
+// ===================================
+const BROADCASTER_API_KEY = process.env.BROADCASTER_API_KEY || '5031';
+const BROADCASTER_AUTHORIZATION = process.env.BROADCASTER_AUTHORIZATION || 'qNYY7U54Bb3rsG0VZu8on7bzE+w=';
+const BROADCASTER_SMS_URL = 'https://api.broadcastermobile.com/brdcstr-endpoint-web/services/messaging/';
+const BROADCASTER_VOICE_URL = 'https://api.broadcastermobile.com/broadcaster-voice-api/services/voice/sendCall';
+
+console.log('✅ Broadcaster configurado');
 
 // ===================================
 // 🔐 ENDPOINTS DE AUTENTICACIÓN
@@ -245,9 +255,9 @@ app.delete('/api/users/:username', async (req, res) => {
     await User.deleteOne({ username });
     await Template.deleteMany({ username });
     await Client.deleteMany({ username });
+    await ScheduledCampaign.deleteMany({ username });
     await Stats.deleteOne({ username });
     await ActivityLog.deleteMany({ username });
-    await ScheduledCampaign.deleteMany({ username });
     
     res.json({ success: true });
   } catch (error) {
@@ -256,7 +266,7 @@ app.delete('/api/users/:username', async (req, res) => {
 });
 
 // ===================================
-// 📄 ENDPOINTS DE PLANTILLAS
+// 📝 ENDPOINTS DE PLANTILLAS
 // ===================================
 app.get('/api/templates/:username', async (req, res) => {
   try {
@@ -270,21 +280,18 @@ app.get('/api/templates/:username', async (req, res) => {
 
 app.post('/api/templates', async (req, res) => {
   try {
-    const template = await Template.create(req.body);
-    res.json({ success: true, template });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-app.put('/api/templates/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const template = await Template.findByIdAndUpdate(
-      id,
-      { ...req.body, updatedAt: new Date() },
-      { new: true }
-    );
+    const { username, company, name, smsMessage, callScript, provider } = req.body;
+    
+    const template = await Template.create({
+      username,
+      company,
+      name,
+      smsMessage,
+      callScript,
+      provider: provider || 'twilio', // Default a Twilio si no se especifica
+      updatedAt: new Date()
+    });
+    
     res.json({ success: true, template });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
@@ -302,7 +309,7 @@ app.delete('/api/templates/:id', async (req, res) => {
 });
 
 // ===================================
-// 👤 ENDPOINTS DE CLIENTES
+// 👥 ENDPOINTS DE CLIENTES
 // ===================================
 app.get('/api/clients/:username', async (req, res) => {
   try {
@@ -314,74 +321,26 @@ app.get('/api/clients/:username', async (req, res) => {
   }
 });
 
-app.post('/api/clients', async (req, res) => {
-  try {
-    const client = await Client.create(req.body);
-    res.json({ success: true, client });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
 app.post('/api/clients/bulk', async (req, res) => {
   try {
     const { username, clients } = req.body;
     
-    if (!clients || clients.length === 0) {
-      return res.status(400).json({ success: false, error: 'No se proporcionaron clientes' });
-    }
-    
-    const clientsToInsert = clients.map(c => ({
+    const clientDocs = clients.map(c => ({
       username,
-      name: c.name || c.Nombre || '',
-      phone: c.phone || c.Telefono || '',
-      cleanPhone: c.cleanPhone || c.phone || c.Telefono || '',
-      debt: c.debt || c.Deuda || '0',
-      company: c.company || c.Compañia || '',
-      status: 'pending'
+      name: c.Nombre,
+      phone: c.Telefono,
+      cleanPhone: c.cleanPhone,
+      debt: c.Deuda,
+      company: c.Compañia
     }));
     
-    const insertedClients = await Client.insertMany(clientsToInsert);
-    
-    // Crear log de actividad
-    await ActivityLog.create({
-      username,
-      message: `${insertedClients.length} clientes cargados`,
-      type: 'success'
-    });
-    
-    res.json({ success: true, count: insertedClients.length, clients: insertedClients });
-  } catch (error) {
-    console.error('Error en /api/clients/bulk:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-app.put('/api/clients/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const client = await Client.findByIdAndUpdate(id, req.body, { new: true });
-    res.json({ success: true, client });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-app.delete('/api/clients/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-    await Client.findByIdAndDelete(id);
-    res.json({ success: true });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-app.delete('/api/clients/user/:username', async (req, res) => {
-  try {
-    const { username } = req.params;
+    // Eliminar clientes anteriores del usuario
     await Client.deleteMany({ username });
-    res.json({ success: true });
+    
+    // Insertar nuevos clientes
+    const inserted = await Client.insertMany(clientDocs);
+    
+    res.json({ success: true, count: inserted.length });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
@@ -395,6 +354,7 @@ app.get('/api/scheduled-campaigns/:username', async (req, res) => {
     const { username } = req.params;
     const campaigns = await ScheduledCampaign.find({ username })
       .populate('templateId')
+      .populate('clients')
       .sort({ scheduledDate: -1 });
     
     const campaignsWithClientCount = campaigns.map(c => ({
@@ -414,13 +374,14 @@ app.get('/api/scheduled-campaigns/:username', async (req, res) => {
 
 app.post('/api/scheduled-campaigns', async (req, res) => {
   try {
-    const { username, name, templateId, type, scheduledDate, clientIds } = req.body;
+    const { username, name, templateId, type, scheduledDate, clientIds, provider } = req.body;
     
     const campaign = await ScheduledCampaign.create({
       username,
       name,
       templateId,
       type,
+      provider: provider || 'twilio', // Default a Twilio
       scheduledDate,
       clients: clientIds,
       status: 'scheduled',
@@ -508,18 +469,117 @@ app.post('/api/logs', async (req, res) => {
 });
 
 // ===================================
-// 📱 ENDPOINTS TWILIO
+// 📱 FUNCIONES DE ENVÍO - BROADCASTER
+// ===================================
+
+async function sendBroadcasterSMS(phoneNumber, message) {
+  try {
+    // Limpiar el número: debe ser 52 + 10 dígitos
+    let cleanNumber = phoneNumber.replace(/\D/g, '');
+    if (cleanNumber.startsWith('52')) {
+      cleanNumber = cleanNumber.substring(2); // Remover el 52 del inicio
+    }
+    if (cleanNumber.length !== 10) {
+      throw new Error('Número debe tener 10 dígitos');
+    }
+
+    const response = await axios.post(BROADCASTER_SMS_URL, {
+      apiKey: parseInt(BROADCASTER_API_KEY),
+      country: 'MX',
+      dial: '####',
+      message: message,
+      msisdns: [`52${cleanNumber}`],
+      tag: 'sistema-cobranza'
+    }, {
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': BROADCASTER_AUTHORIZATION
+      }
+    });
+
+    return { success: true, data: response.data };
+  } catch (error) {
+    console.error('Error enviando SMS con Broadcaster:', error.response?.data || error.message);
+    throw error;
+  }
+}
+
+async function sendBroadcasterCall(phoneNumber, message) {
+  try {
+    // Limpiar el número: debe ser 52 + 10 dígitos
+    let cleanNumber = phoneNumber.replace(/\D/g, '');
+    if (cleanNumber.startsWith('52')) {
+      cleanNumber = cleanNumber.substring(2);
+    }
+    if (cleanNumber.length !== 10) {
+      throw new Error('Número debe tener 10 dígitos');
+    }
+
+    const response = await axios.post(BROADCASTER_VOICE_URL, {
+      phoneNumber: `52${cleanNumber}`,
+      country: 'MX',
+      message: {
+        text: message,
+        volume: 0,
+        emphasis: 0,
+        speed: 0,
+        voice: 'Mia'
+      }
+    }, {
+      headers: {
+        'Content-Type': 'application/json',
+        'api-key': BROADCASTER_API_KEY,
+        'Authorization': BROADCASTER_AUTHORIZATION
+      }
+    });
+
+    return { success: true, data: response.data };
+  } catch (error) {
+    console.error('Error enviando llamada con Broadcaster:', error.response?.data || error.message);
+    throw error;
+  }
+}
+
+// ===================================
+// 📱 ENDPOINTS HÍBRIDOS DE ENVÍO
 // ===================================
 app.post('/api/send-sms', async (req, res) => {
   try {
-    const { to, message, username } = req.body;
+    const { to, message, username, provider } = req.body;
+    const selectedProvider = provider || 'twilio';
     
-    const result = await client.messages.create({
-      body: message,
-      from: TWILIO_PHONE_SMS,
-      to: to,
-      statusCallback: `${BASE_URL}/api/sms-status?username=${encodeURIComponent(username)}`
-    });
+    let result;
+    
+    if (selectedProvider === 'broadcaster') {
+      // 🆕 Enviar con Broadcaster
+      result = await sendBroadcasterSMS(to, message);
+      
+      // Broadcaster no tiene webhooks automáticos, actualizar estadísticas inmediatamente
+      await Stats.updateOne(
+        { username },
+        { 
+          $inc: { 
+            total: 1,
+            pending: 1
+          },
+          lastUpdated: new Date()
+        },
+        { upsert: true }
+      );
+      
+    } else {
+      // Enviar con Twilio
+      if (!twilioClient) {
+        throw new Error('Twilio no configurado');
+      }
+      
+      result = await twilioClient.messages.create({
+        body: message,
+        from: TWILIO_PHONE_SMS,
+        to: to,
+        statusCallback: `${BASE_URL}/api/sms-status?username=${encodeURIComponent(username)}`
+      });
+    }
     
     // Descontar créditos
     await User.findOneAndUpdate(
@@ -527,30 +587,63 @@ app.post('/api/send-sms', async (req, res) => {
       { $inc: { credits: -1 } }
     );
     
-    res.json({ success: true, sid: result.sid, status: result.status });
+    res.json({ 
+      success: true, 
+      provider: selectedProvider,
+      sid: result.sid || 'broadcaster-' + Date.now(),
+      status: result.status || 'sent'
+    });
   } catch (error) {
+    console.error('Error enviando SMS:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
 
 app.post('/api/make-call', async (req, res) => {
   try {
-    const { to, script, username } = req.body;
+    const { to, script, username, provider } = req.body;
+    const selectedProvider = provider || 'twilio';
     
-    const twiml = `<?xml version="1.0" encoding="UTF-8"?>
+    let result;
+    
+    if (selectedProvider === 'broadcaster') {
+      // 🆕 Enviar con Broadcaster
+      result = await sendBroadcasterCall(to, script);
+      
+      // Broadcaster no tiene webhooks automáticos, actualizar estadísticas inmediatamente
+      await Stats.updateOne(
+        { username },
+        { 
+          $inc: { 
+            total: 1,
+            pending: 1
+          },
+          lastUpdated: new Date()
+        },
+        { upsert: true }
+      );
+      
+    } else {
+      // Enviar con Twilio
+      if (!twilioClient) {
+        throw new Error('Twilio no configurado');
+      }
+      
+      const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Say voice="Polly.Mia" language="es-MX">${script}</Say>
   <Pause length="1"/>
   <Say voice="Polly.Mia" language="es-MX">Para más información, comuníquese con nosotros. Gracias.</Say>
 </Response>`;
-    
-    const result = await client.calls.create({
-      twiml: twiml,
-      from: TWILIO_PHONE_CALL,
-      to: to,
-      statusCallback: `${BASE_URL}/api/call-status?username=${encodeURIComponent(username)}`,
-      statusCallbackEvent: ['completed']
-    });
+      
+      result = await twilioClient.calls.create({
+        twiml: twiml,
+        from: TWILIO_PHONE_CALL,
+        to: to,
+        statusCallback: `${BASE_URL}/api/call-status?username=${encodeURIComponent(username)}`,
+        statusCallbackEvent: ['completed']
+      });
+    }
     
     // Descontar créditos
     await User.findOneAndUpdate(
@@ -558,12 +651,21 @@ app.post('/api/make-call', async (req, res) => {
       { $inc: { credits: -2 } }
     );
     
-    res.json({ success: true, sid: result.sid, status: result.status });
+    res.json({ 
+      success: true,
+      provider: selectedProvider,
+      sid: result.sid || 'broadcaster-' + Date.now(),
+      status: result.status || 'sent'
+    });
   } catch (error) {
+    console.error('Error enviando llamada:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
 
+// ===================================
+// 🔔 WEBHOOKS TWILIO
+// ===================================
 app.post('/api/call-status', async (req, res) => {
   try {
     const { CallStatus, CallSid, To, CallDuration } = req.body;
@@ -580,40 +682,40 @@ app.post('/api/call-status', async (req, res) => {
     const duration = parseInt(CallDuration) || 0;
     
     if (CallStatus === 'completed') {
-      // ✅ Llamada completada
       await Stats.updateOne(
         { username },
         { 
           $inc: { 
             success: 1,
             callAnswered: duration > 0 ? 1 : 0,
-            callNoAnswer: duration === 0 ? 1 : 0
+            callNoAnswer: duration === 0 ? 1 : 0,
+            pending: -1
           },
           lastUpdated: new Date()
         },
         { upsert: true }
       );
     } else if (CallStatus === 'busy') {
-      // 📵 Ocupado
       await Stats.updateOne(
         { username },
         { 
           $inc: { 
             errors: 1,
-            callBusy: 1
+            callBusy: 1,
+            pending: -1
           },
           lastUpdated: new Date()
         },
         { upsert: true }
       );
     } else if (CallStatus === 'failed' || CallStatus === 'no-answer' || CallStatus === 'canceled') {
-      // ❌ Falló, no contestó o cancelada
       await Stats.updateOne(
         { username },
         { 
           $inc: { 
             errors: 1,
-            callRejected: 1
+            callRejected: 1,
+            pending: -1
           },
           lastUpdated: new Date()
         },
@@ -628,7 +730,6 @@ app.post('/api/call-status', async (req, res) => {
   }
 });
 
-// Webhook para estado de SMS
 app.post('/api/sms-status', async (req, res) => {
   try {
     const { MessageStatus, MessageSid, To, ErrorCode } = req.body;
@@ -643,27 +744,30 @@ app.post('/api/sms-status', async (req, res) => {
     
     // Actualizar estadísticas según el estado
     if (MessageStatus === 'delivered') {
-      // ✅ SMS entregado exitosamente
       await Stats.updateOne(
         { username },
         { 
-          $inc: { success: 1 },
+          $inc: { 
+            success: 1,
+            pending: -1
+          },
           lastUpdated: new Date()
         },
         { upsert: true }
       );
     } else if (MessageStatus === 'failed' || MessageStatus === 'undelivered') {
-      // ❌ SMS falló o no fue entregado
       await Stats.updateOne(
         { username },
         { 
-          $inc: { errors: 1 },
+          $inc: { 
+            errors: 1,
+            pending: -1
+          },
           lastUpdated: new Date()
         },
         { upsert: true }
       );
     }
-    // Los estados 'sent', 'queued', 'sending' no se cuentan porque son intermedios
     
     res.sendStatus(200);
   } catch (error) {
@@ -684,7 +788,7 @@ cron.schedule('* * * * *', async () => {
     }).populate('templateId').populate('clients');
     
     for (const campaign of campaigns) {
-      console.log(`🚀 Ejecutando campaña: ${campaign.name}`);
+      console.log(`🚀 Ejecutando campaña: ${campaign.name} con ${campaign.provider}`);
       
       campaign.status = 'running';
       await campaign.save();
@@ -705,25 +809,39 @@ cron.schedule('* * * * *', async () => {
             }
           );
           
-          if (campaign.type === 'sms') {
-            await client.messages.create({
-              body: message,
-              from: TWILIO_PHONE_SMS,
-              to: clientDoc.cleanPhone,
-              statusCallback: `${BASE_URL}/api/sms-status?username=${encodeURIComponent(campaign.username)}`
-            });
+          // 🆕 Usar el proveedor especificado
+          if (campaign.provider === 'broadcaster') {
+            if (campaign.type === 'sms') {
+              await sendBroadcasterSMS(clientDoc.cleanPhone, message);
+            } else {
+              await sendBroadcasterCall(clientDoc.cleanPhone, message);
+            }
           } else {
-            const twiml = `<?xml version="1.0" encoding="UTF-8"?>
+            // Twilio
+            if (!twilioClient) {
+              throw new Error('Twilio no configurado');
+            }
+            
+            if (campaign.type === 'sms') {
+              await twilioClient.messages.create({
+                body: message,
+                from: TWILIO_PHONE_SMS,
+                to: clientDoc.cleanPhone,
+                statusCallback: `${BASE_URL}/api/sms-status?username=${encodeURIComponent(campaign.username)}`
+              });
+            } else {
+              const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Say voice="Polly.Mia" language="es-MX">${message}</Say>
 </Response>`;
-            await client.calls.create({
-              twiml: twiml,
-              from: TWILIO_PHONE_CALL,
-              to: clientDoc.cleanPhone,
-              statusCallback: `${BASE_URL}/api/call-status?username=${encodeURIComponent(campaign.username)}`,
-              statusCallbackEvent: ['completed']
-            });
+              await twilioClient.calls.create({
+                twiml: twiml,
+                from: TWILIO_PHONE_CALL,
+                to: clientDoc.cleanPhone,
+                statusCallback: `${BASE_URL}/api/call-status?username=${encodeURIComponent(campaign.username)}`,
+                statusCallbackEvent: ['completed']
+              });
+            }
           }
           
           success++;
@@ -764,7 +882,7 @@ cron.schedule('* * * * *', async () => {
       // Log
       await ActivityLog.create({
         username: campaign.username,
-        message: `Campaña "${campaign.name}" completada: ${success} exitosos, ${errors} errores`,
+        message: `Campaña "${campaign.name}" completada con ${campaign.provider}: ${success} exitosos, ${errors} errores`,
         type: 'success'
       });
       
@@ -793,10 +911,13 @@ app.get('/', (req, res) => {
 app.get('/api/test', (req, res) => {
   res.json({ 
     status: 'OK',
-    message: '🚀 Servidor con MongoDB funcionando',
+    message: '🚀 Servidor híbrido Twilio + Broadcaster funcionando',
     database: mongoose.connection.readyState === 1 ? 'Conectada' : 'Desconectada',
     scheduler: 'Activo',
-    mongodbUri: process.env.MONGODB_URI ? 'Configurada' : 'No configurada'
+    providers: {
+      twilio: twilioClient ? 'Configurado' : 'No configurado',
+      broadcaster: 'Configurado'
+    }
   });
 });
 
@@ -806,11 +927,13 @@ app.get('/api/test', (req, res) => {
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log('╔══════════════════════════════════════════════╗');
-  console.log('🚀 SERVIDOR CON MONGODB Y SCHEDULER INICIADO');
+  console.log('🚀 SERVIDOR HÍBRIDO TWILIO + BROADCASTER');
   console.log('╚══════════════════════════════════════════════╝');
   console.log(`🔗 URL: ${BASE_URL}`);
   console.log(`📊 MongoDB: ${mongoose.connection.readyState === 1 ? '✅ Conectada' : '⏳ Conectando...'}`);
   console.log(`⏰ Scheduler: ✅ Activo (revisa cada minuto)`);
   console.log(`🌐 Puerto: ${PORT}`);
+  console.log(`📱 Twilio: ${twilioClient ? '✅ Configurado' : '⚠️ No configurado'}`);
+  console.log(`📱 Broadcaster: ✅ Configurado`);
   console.log('═══════════════════════════════════════════════\n');
 });
