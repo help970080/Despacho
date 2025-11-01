@@ -886,9 +886,9 @@ app.get('/api/check-ip', async (req, res) => {
       x_forwarded_for: req.headers['x-forwarded-for'],
       x_real_ip: req.headers['x-real-ip'],
       timestamp: new Date().toISOString(),
-      nota: 'La IP render_outbound_ip es la que debes enviar a Broadcaster'
+      nota: 'La IP render_outbound_ip es la que debes enviar a Broadcaster',
       proxy_enabled: PROXY_URL ? true : false,
-      proxy_info: PROXY_URL ? 'IP estática activa' : 'IP dinámica de Render',
+      proxy_info: PROXY_URL ? 'IP estática activa' : 'IP dinámica de Render'
     });
   } catch (error) {
     res.json({ error: error.message });
