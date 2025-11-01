@@ -863,6 +863,48 @@ app.get('/api/test', (req, res) => {
   });
 });
 
+// ===================================
+// 🌐 ENDPOINT PARA VERIFICAR IP PÚBLICA
+// ===================================
+// Este endpoint te muestra tu IP pública para configurarla en Broadcaster
+app.get('/api/check-ip', async (req, res) => {
+  try {
+    const ipifyResponse = await axios.get('https://api.ipify.org?format=json');
+    res.json({ 
+      render_outbound_ip: ipifyResponse.data.ip,
+      request_ip: req.ip,
+      x_forwarded_for: req.headers['x-forwarded-for'],
+      x_real_ip: req.headers['x-real-ip'],
+      timestamp: new Date().toISOString(),
+      nota: 'La IP render_outbound_ip es la que debes enviar a Broadcaster'
+    });
+  } catch (error) {
+    res.json({ error: error.message });
+  }
+});
+
+
+
+// ===================================
+// 🌐 ENDPOINT PARA VERIFICAR IP PÚBLICA
+// ===================================
+// Este endpoint te muestra tu IP pública para configurarla en Broadcaster
+app.get('/api/check-ip', async (req, res) => {
+  try {
+    const ipifyResponse = await axios.get('https://api.ipify.org?format=json');
+    res.json({ 
+      render_outbound_ip: ipifyResponse.data.ip,
+      request_ip: req.ip,
+      x_forwarded_for: req.headers['x-forwarded-for'],
+      x_real_ip: req.headers['x-real-ip'],
+      timestamp: new Date().toISOString(),
+      nota: 'La IP render_outbound_ip es la que debes enviar a Broadcaster'
+    });
+  } catch (error) {
+    res.json({ error: error.message });
+  }
+});
+
 // INICIAR SERVIDOR
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
