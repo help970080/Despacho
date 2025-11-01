@@ -13,18 +13,12 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// ===================================
-// 🗄️ CONEXIÓN A MONGODB
-// ===================================
+// CONEXION A MONGODB
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/cobranza-system')
-.then(() => console.log('✅ Conectado a MongoDB'))
-.catch(err => console.error('❌ Error conectando a MongoDB:', err));
+.then(() => console.log('Conectado a MongoDB'))
+.catch(err => console.error('Error conectando a MongoDB:', err));
 
-// ===================================
-// 📊 MODELOS DE MONGODB
-// ===================================
-
-// Usuario
+// MODELOS DE MONGODB
 const userSchema = new mongoose.Schema({
   username: { type: String, required: true, unique: true },
   password: { type: String, required: true },
@@ -36,19 +30,17 @@ const userSchema = new mongoose.Schema({
   lastLogin: Date
 });
 
-// Plantilla
 const templateSchema = new mongoose.Schema({
   username: { type: String, required: true, index: true },
   company: { type: String, required: true },
   name: { type: String, required: true },
   smsMessage: String,
   callScript: String,
-  provider: { type: String, enum: ['twilio', 'broadcaster'], default: 'twilio' }, // 🆕 Proveedor
+  provider: { type: String, enum: ['twilio', 'broadcaster'], default: 'twilio' },
   createdAt: { type: Date, default: Date.now },
   updatedAt: Date
 });
 
-// Cliente
 const clientSchema = new mongoose.Schema({
   username: { type: String, required: true, index: true },
   name: { type: String, required: true },
@@ -66,13 +58,12 @@ const clientSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now }
 });
 
-// Campaña Programada
 const scheduledCampaignSchema = new mongoose.Schema({
   username: { type: String, required: true, index: true },
   name: { type: String, required: true },
   templateId: { type: mongoose.Schema.Types.ObjectId, ref: 'Template' },
   type: { type: String, enum: ['sms', 'call'], required: true },
-  provider: { type: String, enum: ['twilio', 'broadcaster'], default: 'twilio' }, // 🆕 Proveedor
+  provider: { type: String, enum: ['twilio', 'broadcaster'], default: 'twilio' },
   scheduledDate: { type: Date, required: true },
   clients: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Client' }],
   status: { 
@@ -89,7 +80,6 @@ const scheduledCampaignSchema = new mongoose.Schema({
   executedAt: Date
 });
 
-// Estadísticas
 const statsSchema = new mongoose.Schema({
   username: { type: String, required: true, unique: true },
   total: { type: Number, default: 0 },
@@ -103,7 +93,6 @@ const statsSchema = new mongoose.Schema({
   lastUpdated: { type: Date, default: Date.now }
 });
 
-// Log de Actividad
 const activityLogSchema = new mongoose.Schema({
   username: { type: String, required: true, index: true },
   message: { type: String, required: true },
@@ -118,9 +107,7 @@ const ScheduledCampaign = mongoose.model('ScheduledCampaign', scheduledCampaignS
 const Stats = mongoose.model('Stats', statsSchema);
 const ActivityLog = mongoose.model('ActivityLog', activityLogSchema);
 
-// ===================================
-// 🔐 CREAR USUARIO ADMIN INICIAL
-// ===================================
+// CREAR USUARIO ADMIN INICIAL
 async function createAdminUser() {
   try {
     const adminExists = await User.findOne({ username: 'admin' });
@@ -134,7 +121,7 @@ async function createAdminUser() {
         credits: 10000,
         role: 'admin'
       });
-      console.log('✅ Usuario admin creado: admin / admin123');
+      console.log('Usuario admin creado: admin / admin123');
     }
   } catch (error) {
     console.error('Error creando admin:', error);
@@ -142,9 +129,7 @@ async function createAdminUser() {
 }
 createAdminUser();
 
-// ===================================
-// ⚙️ CONFIGURACIÓN TWILIO
-// ===================================
+// CONFIGURACION TWILIO
 const ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID;
 const AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN;
 const TWILIO_PHONE_SMS = process.env.TWILIO_PHONE_SMS;
@@ -154,36 +139,32 @@ const BASE_URL = process.env.RENDER_EXTERNAL_URL || process.env.BASE_URL || `htt
 let twilioClient = null;
 if (ACCOUNT_SID && AUTH_TOKEN) {
   twilioClient = twilio(ACCOUNT_SID, AUTH_TOKEN);
-  console.log('✅ Twilio configurado');
+  console.log('Twilio configurado');
 } else {
-  console.log('⚠️ Twilio no configurado (variables de entorno faltantes)');
+  console.log('Twilio no configurado (variables de entorno faltantes)');
 }
 
-// ===================================
-// ⚙️ CONFIGURACIÓN BROADCASTER
-// ===================================
+// CONFIGURACION BROADCASTER
 const BROADCASTER_API_KEY = process.env.BROADCASTER_API_KEY || '5031';
 const BROADCASTER_AUTHORIZATION = process.env.BROADCASTER_AUTHORIZATION || 'qNYY7U54Bb3rsG0VZu8on7bzE+w=';
 const BROADCASTER_SMS_URL = 'https://api.broadcastermobile.com/brdcstr-endpoint-web/services/messaging/';
 const BROADCASTER_VOICE_URL = 'https://api.broadcastermobile.com/broadcaster-voice-api/services/voice/sendCall';
 
-console.log('✅ Broadcaster configurado');
+console.log('Broadcaster configurado');
 
-// ===================================
-// 🔐 ENDPOINTS DE AUTENTICACIÓN
-// ===================================
+// ENDPOINTS DE AUTENTICACION
 app.post('/api/auth/login', async (req, res) => {
   try {
     const { username, password } = req.body;
     
     const user = await User.findOne({ username });
     if (!user) {
-      return res.status(401).json({ success: false, error: 'Credenciales inválidas' });
+      return res.status(401).json({ success: false, error: 'Credenciales invalidas' });
     }
     
     const validPassword = await bcrypt.compare(password, user.password);
     if (!validPassword) {
-      return res.status(401).json({ success: false, error: 'Credenciales inválidas' });
+      return res.status(401).json({ success: false, error: 'Credenciales invalidas' });
     }
     
     user.lastLogin = new Date();
@@ -204,9 +185,7 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
-// ===================================
-// 👥 ENDPOINTS DE USUARIOS
-// ===================================
+// ENDPOINTS DE USUARIOS
 app.get('/api/users', async (req, res) => {
   try {
     const users = await User.find({}, '-password').sort({ createdAt: -1 });
@@ -235,7 +214,6 @@ app.post('/api/users', async (req, res) => {
       role
     });
     
-    // Crear estadísticas iniciales
     await Stats.create({ username });
     
     res.json({ success: true, user: { ...newUser.toObject(), password: undefined } });
@@ -265,9 +243,7 @@ app.delete('/api/users/:username', async (req, res) => {
   }
 });
 
-// ===================================
-// 📝 ENDPOINTS DE PLANTILLAS
-// ===================================
+// ENDPOINTS DE PLANTILLAS
 app.get('/api/templates/:username', async (req, res) => {
   try {
     const { username } = req.params;
@@ -288,7 +264,7 @@ app.post('/api/templates', async (req, res) => {
       name,
       smsMessage,
       callScript,
-      provider: provider || 'twilio', // Default a Twilio si no se especifica
+      provider: provider || 'twilio',
       updatedAt: new Date()
     });
     
@@ -308,9 +284,7 @@ app.delete('/api/templates/:id', async (req, res) => {
   }
 });
 
-// ===================================
-// 👥 ENDPOINTS DE CLIENTES
-// ===================================
+// ENDPOINTS DE CLIENTES
 app.get('/api/clients/:username', async (req, res) => {
   try {
     const { username } = req.params;
@@ -334,10 +308,7 @@ app.post('/api/clients/bulk', async (req, res) => {
       company: c.Compañia
     }));
     
-    // Eliminar clientes anteriores del usuario
     await Client.deleteMany({ username });
-    
-    // Insertar nuevos clientes
     const inserted = await Client.insertMany(clientDocs);
     
     res.json({ success: true, count: inserted.length });
@@ -346,9 +317,7 @@ app.post('/api/clients/bulk', async (req, res) => {
   }
 });
 
-// ===================================
-// 📅 ENDPOINTS DE CAMPAÑAS PROGRAMADAS
-// ===================================
+// ENDPOINTS DE CAMPAÑAS PROGRAMADAS
 app.get('/api/scheduled-campaigns/:username', async (req, res) => {
   try {
     const { username } = req.params;
@@ -381,7 +350,7 @@ app.post('/api/scheduled-campaigns', async (req, res) => {
       name,
       templateId,
       type,
-      provider: provider || 'twilio', // Default a Twilio
+      provider: provider || 'twilio',
       scheduledDate,
       clients: clientIds,
       status: 'scheduled',
@@ -408,9 +377,7 @@ app.delete('/api/scheduled-campaigns/:id', async (req, res) => {
   }
 });
 
-// ===================================
-// 📊 ENDPOINTS DE ESTADÍSTICAS
-// ===================================
+// ENDPOINTS DE ESTADISTICAS
 app.get('/api/stats/:username', async (req, res) => {
   try {
     const { username } = req.params;
@@ -443,9 +410,7 @@ app.post('/api/stats/:username/update', async (req, res) => {
   }
 });
 
-// ===================================
-// 📋 ENDPOINTS DE LOGS
-// ===================================
+// ENDPOINTS DE LOGS
 app.get('/api/logs/:username', async (req, res) => {
   try {
     const { username } = req.params;
@@ -468,19 +433,15 @@ app.post('/api/logs', async (req, res) => {
   }
 });
 
-// ===================================
-// 📱 FUNCIONES DE ENVÍO - BROADCASTER
-// ===================================
-
+// FUNCIONES DE ENVIO - BROADCASTER
 async function sendBroadcasterSMS(phoneNumber, message) {
   try {
-    // Limpiar el número: debe ser 52 + 10 dígitos
     let cleanNumber = phoneNumber.replace(/\D/g, '');
     if (cleanNumber.startsWith('52')) {
-      cleanNumber = cleanNumber.substring(2); // Remover el 52 del inicio
+      cleanNumber = cleanNumber.substring(2);
     }
     if (cleanNumber.length !== 10) {
-      throw new Error('Número debe tener 10 dígitos');
+      throw new Error('Numero debe tener 10 digitos');
     }
 
     const response = await axios.post(BROADCASTER_SMS_URL, {
@@ -506,13 +467,12 @@ async function sendBroadcasterSMS(phoneNumber, message) {
 
 async function sendBroadcasterCall(phoneNumber, message) {
   try {
-    // Limpiar el número: debe ser 52 + 10 dígitos
     let cleanNumber = phoneNumber.replace(/\D/g, '');
     if (cleanNumber.startsWith('52')) {
       cleanNumber = cleanNumber.substring(2);
     }
     if (cleanNumber.length !== 10) {
-      throw new Error('Número debe tener 10 dígitos');
+      throw new Error('Numero debe tener 10 digitos');
     }
 
     const response = await axios.post(BROADCASTER_VOICE_URL, {
@@ -540,9 +500,7 @@ async function sendBroadcasterCall(phoneNumber, message) {
   }
 }
 
-// ===================================
-// 📱 ENDPOINTS HÍBRIDOS DE ENVÍO
-// ===================================
+// ENDPOINTS HIBRIDOS DE ENVIO
 app.post('/api/send-sms', async (req, res) => {
   try {
     const { to, message, username, provider } = req.body;
@@ -551,10 +509,8 @@ app.post('/api/send-sms', async (req, res) => {
     let result;
     
     if (selectedProvider === 'broadcaster') {
-      // 🆕 Enviar con Broadcaster
       result = await sendBroadcasterSMS(to, message);
       
-      // Broadcaster no tiene webhooks automáticos, actualizar estadísticas inmediatamente
       await Stats.updateOne(
         { username },
         { 
@@ -568,7 +524,6 @@ app.post('/api/send-sms', async (req, res) => {
       );
       
     } else {
-      // Enviar con Twilio
       if (!twilioClient) {
         throw new Error('Twilio no configurado');
       }
@@ -581,7 +536,6 @@ app.post('/api/send-sms', async (req, res) => {
       });
     }
     
-    // Descontar créditos
     await User.findOneAndUpdate(
       { username },
       { $inc: { credits: -1 } }
@@ -607,10 +561,8 @@ app.post('/api/make-call', async (req, res) => {
     let result;
     
     if (selectedProvider === 'broadcaster') {
-      // 🆕 Enviar con Broadcaster
       result = await sendBroadcasterCall(to, script);
       
-      // Broadcaster no tiene webhooks automáticos, actualizar estadísticas inmediatamente
       await Stats.updateOne(
         { username },
         { 
@@ -624,7 +576,6 @@ app.post('/api/make-call', async (req, res) => {
       );
       
     } else {
-      // Enviar con Twilio
       if (!twilioClient) {
         throw new Error('Twilio no configurado');
       }
@@ -633,7 +584,7 @@ app.post('/api/make-call', async (req, res) => {
 <Response>
   <Say voice="Polly.Mia" language="es-MX">${script}</Say>
   <Pause length="1"/>
-  <Say voice="Polly.Mia" language="es-MX">Para más información, comuníquese con nosotros. Gracias.</Say>
+  <Say voice="Polly.Mia" language="es-MX">Para mas informacion, comuniquese con nosotros. Gracias.</Say>
 </Response>`;
       
       result = await twilioClient.calls.create({
@@ -645,7 +596,6 @@ app.post('/api/make-call', async (req, res) => {
       });
     }
     
-    // Descontar créditos
     await User.findOneAndUpdate(
       { username },
       { $inc: { credits: -2 } }
@@ -663,22 +613,19 @@ app.post('/api/make-call', async (req, res) => {
   }
 });
 
-// ===================================
-// 🔔 WEBHOOKS TWILIO
-// ===================================
+// WEBHOOKS TWILIO
 app.post('/api/call-status', async (req, res) => {
   try {
     const { CallStatus, CallSid, To, CallDuration } = req.body;
     const username = req.query.username;
     
-    console.log(`📞 Llamada ${CallSid} a ${To}: ${CallStatus} (${CallDuration || 0}s) - Usuario: ${username}`);
+    console.log(`Llamada ${CallSid} a ${To}: ${CallStatus} (${CallDuration || 0}s) - Usuario: ${username}`);
     
     if (!username) {
-      console.error('❌ Username no proporcionado en webhook');
+      console.error('Username no proporcionado en webhook');
       return res.sendStatus(200);
     }
     
-    // Actualizar estadísticas según el estado
     const duration = parseInt(CallDuration) || 0;
     
     if (CallStatus === 'completed') {
@@ -725,7 +672,7 @@ app.post('/api/call-status', async (req, res) => {
     
     res.sendStatus(200);
   } catch (error) {
-    console.error('❌ Error en call-status:', error);
+    console.error('Error en call-status:', error);
     res.sendStatus(500);
   }
 });
@@ -735,14 +682,13 @@ app.post('/api/sms-status', async (req, res) => {
     const { MessageStatus, MessageSid, To, ErrorCode } = req.body;
     const username = req.query.username;
     
-    console.log(`📱 SMS ${MessageSid} a ${To}: ${MessageStatus} - Usuario: ${username}${ErrorCode ? ` (Error: ${ErrorCode})` : ''}`);
+    console.log(`SMS ${MessageSid} a ${To}: ${MessageStatus} - Usuario: ${username}${ErrorCode ? ` (Error: ${ErrorCode})` : ''}`);
     
     if (!username) {
-      console.error('❌ Username no proporcionado en webhook');
+      console.error('Username no proporcionado en webhook');
       return res.sendStatus(200);
     }
     
-    // Actualizar estadísticas según el estado
     if (MessageStatus === 'delivered') {
       await Stats.updateOne(
         { username },
@@ -771,14 +717,12 @@ app.post('/api/sms-status', async (req, res) => {
     
     res.sendStatus(200);
   } catch (error) {
-    console.error('❌ Error en sms-status:', error);
+    console.error('Error en sms-status:', error);
     res.sendStatus(500);
   }
 });
 
-// ===================================
-// ⏰ SCHEDULER - EJECUTAR CAMPAÑAS PROGRAMADAS
-// ===================================
+// SCHEDULER - EJECUTAR CAMPAÑAS PROGRAMADAS
 cron.schedule('* * * * *', async () => {
   try {
     const now = new Date();
@@ -788,7 +732,7 @@ cron.schedule('* * * * *', async () => {
     }).populate('templateId').populate('clients');
     
     for (const campaign of campaigns) {
-      console.log(`🚀 Ejecutando campaña: ${campaign.name} con ${campaign.provider}`);
+      console.log(`Ejecutando campaña: ${campaign.name} con ${campaign.provider}`);
       
       campaign.status = 'running';
       await campaign.save();
@@ -809,7 +753,6 @@ cron.schedule('* * * * *', async () => {
             }
           );
           
-          // 🆕 Usar el proveedor especificado
           if (campaign.provider === 'broadcaster') {
             if (campaign.type === 'sms') {
               await sendBroadcasterSMS(clientDoc.cleanPhone, message);
@@ -817,7 +760,6 @@ cron.schedule('* * * * *', async () => {
               await sendBroadcasterCall(clientDoc.cleanPhone, message);
             }
           } else {
-            // Twilio
             if (!twilioClient) {
               throw new Error('Twilio no configurado');
             }
@@ -846,7 +788,6 @@ cron.schedule('* * * * *', async () => {
           
           success++;
           
-          // Actualizar cliente
           clientDoc.lastContact = new Date();
           clientDoc.status = 'contacted';
           await clientDoc.save();
@@ -856,18 +797,15 @@ cron.schedule('* * * * *', async () => {
           console.error(`Error con cliente ${clientDoc.name}:`, error);
         }
         
-        // Delay entre envíos
         await new Promise(resolve => setTimeout(resolve, 1000));
       }
       
-      // Actualizar resultados
       campaign.status = 'completed';
       campaign.executedAt = new Date();
       campaign.results.success = success;
       campaign.results.errors = errors;
       await campaign.save();
       
-      // Actualizar estadísticas
       await Stats.findOneAndUpdate(
         { username: campaign.username },
         {
@@ -879,14 +817,13 @@ cron.schedule('* * * * *', async () => {
         }
       );
       
-      // Log
       await ActivityLog.create({
         username: campaign.username,
         message: `Campaña "${campaign.name}" completada con ${campaign.provider}: ${success} exitosos, ${errors} errores`,
         type: 'success'
       });
       
-      console.log(`✅ Campaña ${campaign.name} completada`);
+      console.log(`Campaña ${campaign.name} completada`);
     }
   } catch (error) {
     console.error('Error en scheduler:', error);
@@ -901,9 +838,7 @@ function replaceVariables(text, client) {
     .replace(/\{Compañia\}/g, client.Compañia || client.company);
 }
 
-// ===================================
-// 🏠 RUTAS FRONTEND
-// ===================================
+// RUTAS FRONTEND
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
@@ -911,7 +846,7 @@ app.get('/', (req, res) => {
 app.get('/api/test', (req, res) => {
   res.json({ 
     status: 'OK',
-    message: '🚀 Servidor híbrido Twilio + Broadcaster funcionando',
+    message: 'Servidor hibrido Twilio + Broadcaster funcionando',
     database: mongoose.connection.readyState === 1 ? 'Conectada' : 'Desconectada',
     scheduler: 'Activo',
     providers: {
@@ -921,19 +856,17 @@ app.get('/api/test', (req, res) => {
   });
 });
 
-// ===================================
-// 🌐 INICIAR SERVIDOR
-// ===================================
+// INICIAR SERVIDOR
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log('╔══════════════════════════════════════════════╗');
-  console.log('🚀 SERVIDOR HÍBRIDO TWILIO + BROADCASTER');
-  console.log('╚══════════════════════════════════════════════╝');
-  console.log(`🔗 URL: ${BASE_URL}`);
-  console.log(`📊 MongoDB: ${mongoose.connection.readyState === 1 ? '✅ Conectada' : '⏳ Conectando...'}`);
-  console.log(`⏰ Scheduler: ✅ Activo (revisa cada minuto)`);
-  console.log(`🌐 Puerto: ${PORT}`);
-  console.log(`📱 Twilio: ${twilioClient ? '✅ Configurado' : '⚠️ No configurado'}`);
-  console.log(`📱 Broadcaster: ✅ Configurado`);
-  console.log('═══════════════════════════════════════════════\n');
+  console.log('========================================');
+  console.log('SERVIDOR HIBRIDO TWILIO + BROADCASTER');
+  console.log('========================================');
+  console.log(`URL: ${BASE_URL}`);
+  console.log(`MongoDB: ${mongoose.connection.readyState === 1 ? 'Conectada' : 'Conectando...'}`);
+  console.log(`Scheduler: Activo (revisa cada minuto)`);
+  console.log(`Puerto: ${PORT}`);
+  console.log(`Twilio: ${twilioClient ? 'Configurado' : 'No configurado'}`);
+  console.log(`Broadcaster: Configurado`);
+  console.log('========================================\n');
 });
