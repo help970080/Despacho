@@ -857,7 +857,8 @@ app.get('/api/check-ip', async (req, res) => {
       request_ip: req.ip,
       x_forwarded_for: req.headers['x-forwarded-for'],
       x_real_ip: req.headers['x-real-ip'],
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      nota: 'La IP render_outbound_ip es la que debes enviar a Broadcaster'
     });
   } catch (error) {
     res.json({ error: error.message });
