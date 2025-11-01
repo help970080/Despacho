@@ -152,6 +152,31 @@ const BROADCASTER_VOICE_URL = 'https://api.broadcastermobile.com/broadcaster-voi
 
 console.log('Broadcaster configurado');
 
+// CONFIGURACION PROXY ESTATICO (QuotaGuard o Fixie)
+const PROXY_URL = process.env.QUOTAGUARDSTATIC_URL || process.env.FIXIE_URL || null;
+
+// Configuración de axios para usar proxy si está disponible
+const axiosConfig = PROXY_URL ? {
+  proxy: {
+    protocol: new URL(PROXY_URL).protocol.replace(':', ''),
+    host: new URL(PROXY_URL).hostname,
+    port: new URL(PROXY_URL).port || 80,
+    auth: new URL(PROXY_URL).username && new URL(PROXY_URL).password ? {
+      username: new URL(PROXY_URL).username,
+      password: new URL(PROXY_URL).password
+    } : undefined
+  }
+} : {};
+
+if (PROXY_URL) {
+  const proxyUrl = new URL(PROXY_URL);
+  console.log(`✅ Proxy estático configurado: ${proxyUrl.hostname}:${proxyUrl.port || 80}`);
+  console.log('🔒 Todas las peticiones salientes usarán IP estática del proxy');
+} else {
+  console.log('⚠️  Proxy NO configurado - usando IP dinámica de Render');
+  console.log('   Para IP estática, agrega QUOTAGUARDSTATIC_URL o FIXIE_URL a variables de entorno');
+}
+
 // ENDPOINTS DE AUTENTICACION
 app.post('/api/auth/login', async (req, res) => {
   try {
@@ -438,10 +463,11 @@ async function sendBroadcasterSMS(phoneNumber, message) {
   try {
     // Verificar IP publica
     try {
-      const ipCheck = await axios.get('https://api.ipify.org?format=json');
+      const ipCheck = await axios.get('https://api.ipify.org?format=json', axiosConfig);
       console.log('===========================================');
       console.log('MI IP PUBLICA (SALIDA A INTERNET):', ipCheck.data.ip);
       console.log('===========================================');
+      console.log(PROXY_URL ? '🔒 Usando IP estática del proxy' : '⚠️  Usando IP dinámica de Render');
     } catch (e) {
       console.log('No se pudo obtener IP:', e.message);
     }
@@ -462,6 +488,7 @@ async function sendBroadcasterSMS(phoneNumber, message) {
       msisdns: [`52${cleanNumber}`],
       tag: 'sistema-cobranza'
     }, {
+      ...axiosConfig,
       headers: {
         'Content-Type': 'application/json',
         'Authorization': BROADCASTER_AUTHORIZATION
@@ -496,6 +523,7 @@ async function sendBroadcasterCall(phoneNumber, message) {
         voice: 'Mia'
       }
     }, {
+      ...axiosConfig,
       headers: {
         'Content-Type': 'application/json',
         'apiKey': BROADCASTER_API_KEY,
@@ -851,7 +879,7 @@ function replaceVariables(text, client) {
 // Endpoint para verificar IP publica
 app.get('/api/check-ip', async (req, res) => {
   try {
-    const ipifyResponse = await axios.get('https://api.ipify.org?format=json');
+    const ipifyResponse = await axios.get('https://api.ipify.org?format=json', axiosConfig);
     res.json({ 
       render_outbound_ip: ipifyResponse.data.ip,
       request_ip: req.ip,
@@ -859,6 +887,8 @@ app.get('/api/check-ip', async (req, res) => {
       x_real_ip: req.headers['x-real-ip'],
       timestamp: new Date().toISOString(),
       nota: 'La IP render_outbound_ip es la que debes enviar a Broadcaster'
+      proxy_enabled: PROXY_URL ? true : false,
+      proxy_info: PROXY_URL ? 'IP estática activa' : 'IP dinámica de Render',
     });
   } catch (error) {
     res.json({ error: error.message });
