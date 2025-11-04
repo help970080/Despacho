@@ -524,10 +524,11 @@ async function sendBroadcasterCall(phoneNumber, message) {
       throw new Error('Numero debe tener 10 digitos');
     }
 
-    console.log("📞 Haciendo llamada a:", `52${cleanNumber}`);
+    console.log('📞 Haciendo llamada a:', `52${cleanNumber}`);
 
-    const response = await axios.post(BROADCASTER_VOICE_URL, {
-      phoneNumber: `52${cleanNumber}`,
+    // FORMATO SEGÚN CONFIGURACIÓN OFICIAL DE BROADCASTER
+    const requestBody = {
+      phoneNumber: `52${cleanNumber}`,  // String con 52 + 10 dígitos
       country: 'MX',
       message: {
         text: message,
@@ -536,20 +537,27 @@ async function sendBroadcasterCall(phoneNumber, message) {
         speed: 0,
         voice: 'Mia'
       }
-    }, {
+    };
+
+    console.log('📋 Voice Request Body:', JSON.stringify(requestBody, null, 2));
+
+    const response = await axios.post(BROADCASTER_VOICE_URL, requestBody, {
       ...axiosConfig,
       timeout: 30000,
       headers: {
         'Content-Type': 'application/json',
-        'apiKey': BROADCASTER_API_KEY,
-        'Authorization': `Bearer ${BROADCASTER_AUTHORIZATION}`
+        'api-key': BROADCASTER_API_KEY,  // Con guión, no camelCase
+        'Authorization': BROADCASTER_AUTHORIZATION  // Sin "Bearer"
       }
     });
 
-    console.log("✅ Respuesta de Broadcaster Voice:", response.status);
+    console.log('✅ Respuesta de Broadcaster Voice:', response.status, response.data);
     return { success: true, data: response.data };
   } catch (error) {
-    console.error('❌ Error enviando llamada con Broadcaster:', error.response?.status, error.response?.data || error.message);
+    console.error('❌ Error enviando llamada con Broadcaster:');
+    console.error('   Status:', error.response?.status);
+    console.error('   Data:', JSON.stringify(error.response?.data, null, 2));
+    console.error('   Message:', error.message);
     throw error;
   }
 }
