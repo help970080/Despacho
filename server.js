@@ -6,7 +6,6 @@ const cors = require('cors');
 const path = require('path');
 const bcrypt = require('bcryptjs');
 const cron = require('node-cron');
-const { HttpsProxyAgent } = require('https-proxy-agent');
 require('dotenv').config();
 
 const app = express();
@@ -148,34 +147,10 @@ if (ACCOUNT_SID && AUTH_TOKEN) {
 // CONFIGURACION BROADCASTER
 const BROADCASTER_API_KEY = process.env.BROADCASTER_API_KEY || '5031';
 const BROADCASTER_AUTHORIZATION = process.env.BROADCASTER_AUTHORIZATION || 'qNYY7U54Bb3rsG0VZu8on7bzE+w=';
-const BROADCASTER_SMS_URL = 'http://api.broadcastermobile.com/brdcstr-endpoint-web/services/messaging/';
+const BROADCASTER_SMS_URL = 'https://api.broadcastermobile.com/brdcstr-endpoint-web/services/messaging/';
 const BROADCASTER_VOICE_URL = 'https://api.broadcastermobile.com/broadcaster-voice-api/services/voice/sendCall';
 
 console.log('Broadcaster configurado');
-
-// CONFIGURACION PROXY ESTATICO (QuotaGuard o Fixie)
-const PROXY_URL = process.env.QUOTAGUARDSTATIC_URL || process.env.FIXIE_URL || null;
-
-// Configuración de axios para usar proxy HTTPS correctamente
-let axiosConfig = {};
-
-if (PROXY_URL) {
-  const proxyUrl = new URL(PROXY_URL);
-  console.log(`✅ Proxy estático configurado: ${proxyUrl.hostname}:${proxyUrl.port || 80}`);
-  
-  // Crear agente HTTPS que soporte proxy HTTP
-  const httpsAgent = new HttpsProxyAgent(PROXY_URL);
-  
-  axiosConfig = {
-    httpsAgent: httpsAgent,
-    proxy: false  // Desactivar proxy por defecto de axios
-  };
-  
-  console.log('🔒 Todas las peticiones salientes usarán IP estática del proxy');
-} else {
-  console.log('⚠️  Proxy NO configurado - usando IP dinámica de Render');
-  console.log('   Para IP estática, agrega QUOTAGUARDSTATIC_URL o FIXIE_URL a variables de entorno');
-}
 
 // ENDPOINTS DE AUTENTICACION
 app.post('/api/auth/login', async (req, res) => {
@@ -463,11 +438,10 @@ async function sendBroadcasterSMS(phoneNumber, message) {
   try {
     // Verificar IP publica
     try {
-      const ipCheck = await axios.get('https://api.ipify.org?format=json', axiosConfig);
+      const ipCheck = await axios.get('https://api.ipify.org?format=json');
       console.log('===========================================');
       console.log('MI IP PUBLICA (SALIDA A INTERNET):', ipCheck.data.ip);
       console.log('===========================================');
-      console.log(PROXY_URL ? '🔒 Usando IP estática del proxy' : '⚠️  Usando IP dinámica de Render');
     } catch (e) {
       console.log('No se pudo obtener IP:', e.message);
     }
@@ -480,22 +454,22 @@ async function sendBroadcasterSMS(phoneNumber, message) {
       throw new Error('Numero debe tener 10 digitos');
     }
 
-    console.log('📤 Enviando SMS a:', `52${cleanNumber}`);
+    const fullPhoneNumber = parseInt(`52${cleanNumber}`);
+    console.log('Enviando SMS a:', fullPhoneNumber);
 
-    // FORMATO SEGÚN DOCUMENTACIÓN OFICIAL DE CONCEPTOMOVIL
+    // FORMATO CORRECTO según documentación Broadcaster (Curl_SMS.txt)
     const requestBody = {
-      apiKey: parseInt(BROADCASTER_API_KEY),
-      country: 'mx',  // Minúsculas según documentación
-      dial: 41414,  // Número sin comillas
+      apiKey: 5031,  // Número sin comillas
+      country: "MX",
+      dial: 41414,   // Número sin comillas
       message: message,
-      msisdns: [parseInt(`52${cleanNumber}`)],  // Número en array
-      tag: 'sistema-cobranza'
+      msisdns: [fullPhoneNumber],  // Número en array sin comillas
+      tag: "sistema-cobranza"
     };
 
-    console.log('📋 Request Body:', JSON.stringify(requestBody, null, 2));
+    console.log('Request Body:', JSON.stringify(requestBody, null, 2));
 
     const response = await axios.post(BROADCASTER_SMS_URL, requestBody, {
-      ...axiosConfig,
       timeout: 30000,
       headers: {
         'Content-Type': 'application/json',
@@ -503,13 +477,13 @@ async function sendBroadcasterSMS(phoneNumber, message) {
       }
     });
 
-    console.log('✅ Respuesta de Broadcaster:', response.status, response.data);
+    console.log('Respuesta Broadcaster:', response.status, response.data);
     return { success: true, data: response.data };
   } catch (error) {
-    console.error('❌ Error enviando SMS con Broadcaster:');
-    console.error('   Status:', error.response?.status);
-    console.error('   Data:', JSON.stringify(error.response?.data, null, 2));
-    console.error('   Message:', error.message);
+    console.error('Error enviando SMS con Broadcaster:');
+    console.error('Status:', error.response?.status);
+    console.error('Data:', JSON.stringify(error.response?.data, null, 2));
+    console.error('Message:', error.message);
     throw error;
   }
 }
@@ -524,32 +498,35 @@ async function sendBroadcasterCall(phoneNumber, message) {
       throw new Error('Numero debe tener 10 digitos');
     }
 
-    console.log("📞 Haciendo llamada a:", `52${cleanNumber}`);
+    const fullPhone = `52${cleanNumber}`;
+    console.log('Haciendo llamada a:', fullPhone);
 
+    // FORMATO CORRECTO según documentación Broadcaster (Curl_Voz.txt)
     const response = await axios.post(BROADCASTER_VOICE_URL, {
-      phoneNumber: `52${cleanNumber}`,
-      country: 'MX',
+      phoneNumber: fullPhone,
+      country: "MX",
       message: {
         text: message,
         volume: 0,
         emphasis: 0,
         speed: 0,
-        voice: 'Mia'
+        voice: "Mia"
       }
     }, {
-      ...axiosConfig,
       timeout: 30000,
       headers: {
         'Content-Type': 'application/json',
-        'apiKey': BROADCASTER_API_KEY,
-        'Authorization': `Bearer ${BROADCASTER_AUTHORIZATION}`
+        'api-key': '5031',  // Como string según curl
+        'Authorization': 'qNYY7U54Bb3rsG0VZu8on7bzE+w='  // Sin Bearer según curl
       }
     });
 
-    console.log("✅ Respuesta de Broadcaster Voice:", response.status);
+    console.log('Respuesta Broadcaster Voice:', response.status);
     return { success: true, data: response.data };
   } catch (error) {
-    console.error('❌ Error enviando llamada con Broadcaster:', error.response?.status, error.response?.data || error.message);
+    console.error('Error enviando llamada con Broadcaster:');
+    console.error('Status:', error.response?.status);
+    console.error('Data:', JSON.stringify(error.response?.data, null, 2));
     throw error;
   }
 }
@@ -895,16 +872,14 @@ function replaceVariables(text, client) {
 // Endpoint para verificar IP publica
 app.get('/api/check-ip', async (req, res) => {
   try {
-    const ipifyResponse = await axios.get('https://api.ipify.org?format=json', axiosConfig);
+    const ipifyResponse = await axios.get('https://api.ipify.org?format=json');
     res.json({ 
       render_outbound_ip: ipifyResponse.data.ip,
       request_ip: req.ip,
       x_forwarded_for: req.headers['x-forwarded-for'],
       x_real_ip: req.headers['x-real-ip'],
       timestamp: new Date().toISOString(),
-      nota: 'La IP render_outbound_ip es la que debes enviar a Broadcaster',
-      proxy_enabled: PROXY_URL ? true : false,
-      proxy_info: PROXY_URL ? 'IP estática activa' : 'IP dinámica de Render'
+      nota: 'La IP render_outbound_ip es la que debes enviar a Broadcaster'
     });
   } catch (error) {
     res.json({ error: error.message });
