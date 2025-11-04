@@ -480,29 +480,37 @@ async function sendBroadcasterSMS(phoneNumber, message) {
       throw new Error('Numero debe tener 10 digitos');
     }
 
-    console.log("📤 Enviando SMS a:", `52${cleanNumber}`);
+    console.log('📤 Enviando SMS a:', `52${cleanNumber}`);
 
-    const response = await axios.post(BROADCASTER_SMS_URL, {
+    // FORMATO SEGÚN DOCUMENTACIÓN OFICIAL DE CONCEPTOMOVIL
+    const requestBody = {
       apiKey: parseInt(BROADCASTER_API_KEY),
       country: 'MX',
-      dial: '41414',
+      dial: 41414,  // Número sin comillas
       message: message,
-      msisdns: [`52${cleanNumber}`],
+      msisdns: [parseInt(`52${cleanNumber}`)],  // Número en array
       tag: 'sistema-cobranza'
-    }, {
+    };
+
+    console.log('📋 Request Body:', JSON.stringify(requestBody, null, 2));
+
+    const response = await axios.post(BROADCASTER_SMS_URL, requestBody, {
       ...axiosConfig,
-      headers: {
       timeout: 30000,
+      headers: {
         'Content-Type': 'application/json',
         'Authorization': BROADCASTER_AUTHORIZATION
       }
     });
 
+    console.log('✅ Respuesta de Broadcaster:', response.status, response.data);
     return { success: true, data: response.data };
-    console.log("✅ Respuesta de Broadcaster:", response.status);
   } catch (error) {
-    console.error('Error enviando SMS con Broadcaster:', error.response?.data || error.message);
-    console.error('❌ Error enviando SMS con Broadcaster:', error.response?.status, error.response?.data || error.message);
+    console.error('❌ Error enviando SMS con Broadcaster:');
+    console.error('   Status:', error.response?.status);
+    console.error('   Data:', JSON.stringify(error.response?.data, null, 2));
+    console.error('   Message:', error.message);
+    throw error;
   }
 }
 
