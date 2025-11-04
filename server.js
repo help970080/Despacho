@@ -489,6 +489,7 @@ async function sendBroadcasterSMS(phoneNumber, message) {
       tag: 'sistema-cobranza'
     }, {
       ...axiosConfig,
+      timeout: 15000,
       headers: {
         'Content-Type': 'application/json',
         'Authorization': BROADCASTER_AUTHORIZATION
@@ -524,6 +525,7 @@ async function sendBroadcasterCall(phoneNumber, message) {
       }
     }, {
       ...axiosConfig,
+      timeout: 15000,
       headers: {
         'Content-Type': 'application/json',
         'apiKey': BROADCASTER_API_KEY,
