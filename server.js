@@ -546,8 +546,7 @@ async function sendBroadcasterCall(phoneNumber, message) {
       timeout: 30000,
       headers: {
         'Content-Type': 'application/json',
-        'api-key': BROADCASTER_API_KEY,  // Con guión, no camelCase
-        'Authorization': BROADCASTER_AUTHORIZATION  // Sin "Bearer"
+        'Authorization': BROADCASTER_AUTHORIZATION
       }
     });
 
