@@ -148,7 +148,7 @@ if (ACCOUNT_SID && AUTH_TOKEN) {
 // CONFIGURACION BROADCASTER
 const BROADCASTER_API_KEY = process.env.BROADCASTER_API_KEY || '5031';
 const BROADCASTER_AUTHORIZATION = process.env.BROADCASTER_AUTHORIZATION || 'qNYY7U54Bb3rsG0VZu8on7bzE+w=';
-const BROADCASTER_SMS_URL = 'https://api.broadcastermobile.com/brdcstr-endpoint-web/services/messaging/';
+const BROADCASTER_SMS_URL = 'http://api.broadcastermobile.com/brdcstr-endpoint-web/services/messaging/';
 const BROADCASTER_VOICE_URL = 'https://api.broadcastermobile.com/broadcaster-voice-api/services/voice/sendCall';
 
 console.log('Broadcaster configurado');
@@ -485,7 +485,7 @@ async function sendBroadcasterSMS(phoneNumber, message) {
     // FORMATO SEGÚN DOCUMENTACIÓN OFICIAL DE CONCEPTOMOVIL
     const requestBody = {
       apiKey: parseInt(BROADCASTER_API_KEY),
-      country: 'MX',
+      country: 'mx',  // Minúsculas según documentación
       dial: 41414,  // Número sin comillas
       message: message,
       msisdns: [parseInt(`52${cleanNumber}`)],  // Número en array
