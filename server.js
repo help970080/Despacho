@@ -516,6 +516,17 @@ async function sendBroadcasterSMS(phoneNumber, message) {
 
 async function sendBroadcasterCall(phoneNumber, message) {
   try {
+    // Verificar IP publica
+    try {
+      const ipCheck = await axios.get('https://api.ipify.org?format=json', axiosConfig);
+      console.log('===========================================');
+      console.log('MI IP PUBLICA (VOICE):', ipCheck.data.ip);
+      console.log('===========================================');
+      console.log(PROXY_URL ? '🔒 Usando IP estática del proxy' : '⚠️  Usando IP dinámica de Render');
+    } catch (e) {
+      console.log('No se pudo obtener IP:', e.message);
+    }
+
     let cleanNumber = phoneNumber.replace(/\D/g, '');
     if (cleanNumber.startsWith('52')) {
       cleanNumber = cleanNumber.substring(2);
@@ -540,12 +551,18 @@ async function sendBroadcasterCall(phoneNumber, message) {
     };
 
     console.log('📋 Voice Request Body:', JSON.stringify(requestBody, null, 2));
+    console.log('📋 Voice Headers:', JSON.stringify({
+      'Content-Type': 'application/json',
+      'api-key': '5031',
+      'Authorization': BROADCASTER_AUTHORIZATION
+    }, null, 2));
 
     const response = await axios.post(BROADCASTER_VOICE_URL, requestBody, {
       ...axiosConfig,
       timeout: 30000,
       headers: {
         'Content-Type': 'application/json',
+        'api-key': '5031',  // Como string según cURL de Broadcaster
         'Authorization': BROADCASTER_AUTHORIZATION
       }
     });
