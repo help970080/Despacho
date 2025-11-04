@@ -6,6 +6,7 @@ const cors = require('cors');
 const path = require('path');
 const bcrypt = require('bcryptjs');
 const cron = require('node-cron');
+const { HttpsProxyAgent } = require('https-proxy-agent');
 require('dotenv').config();
 
 const app = express();
@@ -155,22 +156,21 @@ console.log('Broadcaster configurado');
 // CONFIGURACION PROXY ESTATICO (QuotaGuard o Fixie)
 const PROXY_URL = process.env.QUOTAGUARDSTATIC_URL || process.env.FIXIE_URL || null;
 
-// Configuración de axios para usar proxy si está disponible
-const axiosConfig = PROXY_URL ? {
-  proxy: {
-    protocol: new URL(PROXY_URL).protocol.replace(':', ''),
-    host: new URL(PROXY_URL).hostname,
-    port: new URL(PROXY_URL).port || 80,
-    auth: new URL(PROXY_URL).username && new URL(PROXY_URL).password ? {
-      username: new URL(PROXY_URL).username,
-      password: new URL(PROXY_URL).password
-    } : undefined
-  }
-} : {};
+// Configuración de axios para usar proxy HTTPS correctamente
+let axiosConfig = {};
 
 if (PROXY_URL) {
   const proxyUrl = new URL(PROXY_URL);
   console.log(`✅ Proxy estático configurado: ${proxyUrl.hostname}:${proxyUrl.port || 80}`);
+  
+  // Crear agente HTTPS que soporte proxy HTTP
+  const httpsAgent = new HttpsProxyAgent(PROXY_URL);
+  
+  axiosConfig = {
+    httpsAgent: httpsAgent,
+    proxy: false  // Desactivar proxy por defecto de axios
+  };
+  
   console.log('🔒 Todas las peticiones salientes usarán IP estática del proxy');
 } else {
   console.log('⚠️  Proxy NO configurado - usando IP dinámica de Render');
@@ -480,6 +480,8 @@ async function sendBroadcasterSMS(phoneNumber, message) {
       throw new Error('Numero debe tener 10 digitos');
     }
 
+    console.log("📤 Enviando SMS a:", `52${cleanNumber}`);
+
     const response = await axios.post(BROADCASTER_SMS_URL, {
       apiKey: parseInt(BROADCASTER_API_KEY),
       country: 'MX',
@@ -489,17 +491,18 @@ async function sendBroadcasterSMS(phoneNumber, message) {
       tag: 'sistema-cobranza'
     }, {
       ...axiosConfig,
-      timeout: 15000,
       headers: {
+      timeout: 30000,
         'Content-Type': 'application/json',
         'Authorization': BROADCASTER_AUTHORIZATION
       }
     });
 
     return { success: true, data: response.data };
+    console.log("✅ Respuesta de Broadcaster:", response.status);
   } catch (error) {
     console.error('Error enviando SMS con Broadcaster:', error.response?.data || error.message);
-    throw error;
+    console.error('❌ Error enviando SMS con Broadcaster:', error.response?.status, error.response?.data || error.message);
   }
 }
 
@@ -513,6 +516,8 @@ async function sendBroadcasterCall(phoneNumber, message) {
       throw new Error('Numero debe tener 10 digitos');
     }
 
+    console.log("📞 Haciendo llamada a:", `52${cleanNumber}`);
+
     const response = await axios.post(BROADCASTER_VOICE_URL, {
       phoneNumber: `52${cleanNumber}`,
       country: 'MX',
@@ -525,7 +530,7 @@ async function sendBroadcasterCall(phoneNumber, message) {
       }
     }, {
       ...axiosConfig,
-      timeout: 15000,
+      timeout: 30000,
       headers: {
         'Content-Type': 'application/json',
         'apiKey': BROADCASTER_API_KEY,
@@ -533,9 +538,10 @@ async function sendBroadcasterCall(phoneNumber, message) {
       }
     });
 
+    console.log("✅ Respuesta de Broadcaster Voice:", response.status);
     return { success: true, data: response.data };
   } catch (error) {
-    console.error('Error enviando llamada con Broadcaster:', error.response?.data || error.message);
+    console.error('❌ Error enviando llamada con Broadcaster:', error.response?.status, error.response?.data || error.message);
     throw error;
   }
 }
