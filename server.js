@@ -483,7 +483,7 @@ async function sendBroadcasterSMS(phoneNumber, message) {
     const response = await axios.post(BROADCASTER_SMS_URL, {
       apiKey: parseInt(BROADCASTER_API_KEY),
       country: 'MX',
-      dial: '####',
+      dial: '41414',
       message: message,
       msisdns: [`52${cleanNumber}`],
       tag: 'sistema-cobranza'
