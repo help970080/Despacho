@@ -550,6 +550,9 @@
             <span class="user-badge" id="userRole">Usuario</span>
             <div class="credits">💳 <span id="userCredits">0</span> créditos</div>
           </div>
+          <button id="btnAdmin" class="btn btn-primary" onclick="goToAdmin()" style="display: none; margin-right: 10px;">
+            👨‍💼 Panel Admin
+          </button>
           <button class="btn btn-danger" onclick="logout()">Salir</button>
         </div>
       </div>
@@ -828,6 +831,12 @@
         if (data.success) {
           currentUser = data.user;
           sessionStorage.setItem('current_user', JSON.stringify(currentUser));
+          
+          // Guardar para panel de admin si es admin
+          if (currentUser.role === 'admin') {
+            localStorage.setItem('adminUser', JSON.stringify(currentUser));
+          }
+          
           showMainScreen();
         } else {
           showLoginError(data.error);
@@ -856,12 +865,14 @@
       
       if (currentUser.role === 'admin') {
         document.getElementById('adminTab').style.display = 'block';
+        document.getElementById('btnAdmin').style.display = 'inline-block';
         loadUsers();
       }
     }
 
     function logout() {
       sessionStorage.removeItem('current_user');
+      localStorage.removeItem('adminUser');
       location.reload();
     }
 
@@ -1552,6 +1563,22 @@
         showMainScreen();
       }
       
+
+    // Función para abrir panel de administrador
+    function goToAdmin() {
+      window.open('/admin.html', '_blank');
+    }
+
+    // Al cargar la página, verificar si es admin
+    window.addEventListener('DOMContentLoaded', () => {
+      const savedUser = sessionStorage.getItem('current_user');
+      if (savedUser) {
+        const user = JSON.parse(savedUser);
+        if (user && user.role === 'admin') {
+          document.getElementById('btnAdmin').style.display = 'inline-block';
+        }
+      }
+    });
       const now = new Date();
       const today = now.toISOString().split('T')[0];
       const currentTime = now.toTimeString().slice(0, 5);

@@ -101,12 +101,25 @@ const activityLogSchema = new mongoose.Schema({
   timestamp: { type: Date, default: Date.now }
 });
 
+const transactionSchema = new mongoose.Schema({
+  username: { type: String, required: true, index: true },
+  type: { type: String, enum: ['add', 'deduct', 'purchase', 'usage'], required: true },
+  amount: { type: Number, required: true },
+  balanceBefore: { type: Number, required: true },
+  balanceAfter: { type: Number, required: true },
+  description: { type: String, required: true },
+  adminUser: { type: String },
+  reference: { type: String },
+  timestamp: { type: Date, default: Date.now }
+});
+
 const User = mongoose.model('User', userSchema);
 const Template = mongoose.model('Template', templateSchema);
 const Client = mongoose.model('Client', clientSchema);
 const ScheduledCampaign = mongoose.model('ScheduledCampaign', scheduledCampaignSchema);
 const Stats = mongoose.model('Stats', statsSchema);
 const ActivityLog = mongoose.model('ActivityLog', activityLogSchema);
+const Transaction = mongoose.model('Transaction', transactionSchema);
 
 // CREAR USUARIO ADMIN INICIAL
 async function createAdminUser() {
@@ -955,6 +968,207 @@ app.get('/api/test', (req, res) => {
 
 // INICIAR SERVIDOR
 const PORT = process.env.PORT || 3000;
+
+// ========================================
+// ENDPOINTS DE ADMINISTRADOR
+// ========================================
+
+// Middleware para verificar si el usuario es admin
+async function isAdmin(req, res, next) {
+  try {
+    const { username } = req.body;
+    if (!username) {
+      return res.status(401).json({ success: false, error: 'Usuario no autenticado' });
+    }
+    
+    const user = await User.findOne({ username });
+    if (!user || user.role !== 'admin') {
+      return res.status(403).json({ success: false, error: 'Acceso denegado. Solo administradores.' });
+    }
+    
+    req.adminUser = user;
+    next();
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+}
+
+// GET - Obtener todos los usuarios (solo admin)
+app.post('/api/admin/users', isAdmin, async (req, res) => {
+  try {
+    const users = await User.find({}, '-password')
+      .sort({ createdAt: -1 });
+    
+    res.json({ success: true, users });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// POST - Agregar/quitar créditos a un usuario (solo admin)
+app.post('/api/admin/users/:username/credits', isAdmin, async (req, res) => {
+  try {
+    const { username } = req.params;
+    const { amount, description } = req.body;
+    const adminUsername = req.adminUser.username;
+    
+    if (!amount || amount === 0) {
+      return res.status(400).json({ success: false, error: 'Cantidad inválida' });
+    }
+    
+    const user = await User.findOne({ username });
+    if (!user) {
+      return res.status(404).json({ success: false, error: 'Usuario no encontrado' });
+    }
+    
+    const balanceBefore = user.credits;
+    const balanceAfter = balanceBefore + amount;
+    
+    if (balanceAfter < 0) {
+      return res.status(400).json({ success: false, error: 'Saldo insuficiente' });
+    }
+    
+    // Actualizar créditos
+    user.credits = balanceAfter;
+    await user.save();
+    
+    // Registrar transacción
+    await Transaction.create({
+      username: username,
+      type: amount > 0 ? 'add' : 'deduct',
+      amount: Math.abs(amount),
+      balanceBefore,
+      balanceAfter,
+      description: description || (amount > 0 ? 'Créditos agregados por admin' : 'Créditos deducidos por admin'),
+      adminUser: adminUsername
+    });
+    
+    // Log de actividad
+    await ActivityLog.create({
+      username: adminUsername,
+      message: `${amount > 0 ? 'Agregó' : 'Dedujo'} ${Math.abs(amount)} créditos ${amount > 0 ? 'a' : 'de'} ${username}`,
+      type: 'info'
+    });
+    
+    res.json({ 
+      success: true, 
+      newBalance: balanceAfter,
+      message: `Se ${amount > 0 ? 'agregaron' : 'dedujeron'} ${Math.abs(amount)} créditos exitosamente`
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET - Obtener historial de transacciones (solo admin)
+app.post('/api/admin/transactions', isAdmin, async (req, res) => {
+  try {
+    const { filterUsername, limit = 100 } = req.body;
+    
+    const query = filterUsername ? { username: filterUsername } : {};
+    
+    const transactions = await Transaction.find(query)
+      .sort({ timestamp: -1 })
+      .limit(parseInt(limit));
+    
+    res.json({ success: true, transactions });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET - Obtener todas las transacciones de un usuario específico
+app.get('/api/transactions/:username', async (req, res) => {
+  try {
+    const { username } = req.params;
+    
+    const transactions = await Transaction.find({ username })
+      .sort({ timestamp: -1 })
+      .limit(50);
+    
+    res.json({ success: true, transactions });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// POST - Eliminar usuario (solo admin)
+app.post('/api/admin/users/:username/delete', isAdmin, async (req, res) => {
+  try {
+    const { username } = req.params;
+    const adminUsername = req.adminUser.username;
+    
+    if (username === adminUsername) {
+      return res.status(400).json({ success: false, error: 'No puedes eliminar tu propia cuenta' });
+    }
+    
+    if (username === 'admin') {
+      return res.status(400).json({ success: false, error: 'No se puede eliminar la cuenta admin principal' });
+    }
+    
+    const user = await User.findOne({ username });
+    if (!user) {
+      return res.status(404).json({ success: false, error: 'Usuario no encontrado' });
+    }
+    
+    // Eliminar todos los datos del usuario
+    await User.deleteOne({ username });
+    await Template.deleteMany({ username });
+    await Client.deleteMany({ username });
+    await ScheduledCampaign.deleteMany({ username });
+    await Stats.deleteOne({ username });
+    await ActivityLog.deleteMany({ username });
+    await Transaction.deleteMany({ username });
+    
+    // Log de actividad
+    await ActivityLog.create({
+      username: adminUsername,
+      message: `Eliminó la cuenta de usuario: ${username}`,
+      type: 'info'
+    });
+    
+    res.json({ success: true, message: 'Usuario eliminado exitosamente' });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// POST - Cambiar rol de usuario (solo admin)
+app.post('/api/admin/users/:username/role', isAdmin, async (req, res) => {
+  try {
+    const { username } = req.params;
+    const { role } = req.body;
+    const adminUsername = req.adminUser.username;
+    
+    if (!['admin', 'user'].includes(role)) {
+      return res.status(400).json({ success: false, error: 'Rol inválido' });
+    }
+    
+    if (username === 'admin') {
+      return res.status(400).json({ success: false, error: 'No se puede cambiar el rol del admin principal' });
+    }
+    
+    const user = await User.findOne({ username });
+    if (!user) {
+      return res.status(404).json({ success: false, error: 'Usuario no encontrado' });
+    }
+    
+    user.role = role;
+    await user.save();
+    
+    // Log de actividad
+    await ActivityLog.create({
+      username: adminUsername,
+      message: `Cambió el rol de ${username} a ${role}`,
+      type: 'info'
+    });
+    
+    res.json({ success: true, message: `Rol actualizado a ${role}` });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 app.listen(PORT, () => {
   console.log('========================================');
   console.log('SERVIDOR HIBRIDO TWILIO + BROADCASTER');
