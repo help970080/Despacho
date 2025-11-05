@@ -1555,6 +1555,11 @@
       addLog(`📊 Excel exportado: ${filtered.length} clientes filtrados`, 'success');
     }
 
+    // Función para abrir panel de administrador (DEBE ESTAR FUERA DE WINDOW.ONLOAD)
+    function goToAdmin() {
+      window.open('/admin.html', '_blank');
+    }
+
     // 🚀 INICIALIZAR
     window.onload = function() {
       const sessionUser = sessionStorage.getItem('current_user');
@@ -1563,14 +1568,7 @@
         showMainScreen();
       }
       
-
-    // Función para abrir panel de administrador
-    function goToAdmin() {
-      window.open('/admin.html', '_blank');
-    }
-
-    // Al cargar la página, verificar si es admin
-    window.addEventListener('DOMContentLoaded', () => {
+      // Al cargar, verificar si es admin
       const savedUser = sessionStorage.getItem('current_user');
       if (savedUser) {
         const user = JSON.parse(savedUser);
@@ -1578,7 +1576,6 @@
           document.getElementById('btnAdmin').style.display = 'inline-block';
         }
       }
-    });
       const now = new Date();
       const today = now.toISOString().split('T')[0];
       const currentTime = now.toTimeString().slice(0, 5);
