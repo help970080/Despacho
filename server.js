@@ -157,7 +157,7 @@ async function createAdminUser() {
       });
       console.log('✅ Usuario admin creado: admin / [password desde variable de entorno]');
       if (!process.env.ADMIN_PASSWORD) {
-        console.log('⚠️  ADVERTENCIA: Agrega ADMIN_PASSWORD a las variables de entorno');
+        console.log('⚠️ ADVERTENCIA: Agrega ADMIN_PASSWORD a las variables de entorno');
       }
     }
   } catch (error) {
@@ -178,7 +178,7 @@ if (ACCOUNT_SID && AUTH_TOKEN) {
   twilioClient = twilio(ACCOUNT_SID, AUTH_TOKEN);
   console.log('✅ Twilio configurado');
 } else {
-  console.log('⚠️  Twilio no configurado (variables de entorno faltantes)');
+  console.log('⚠️ Twilio no configurado (variables de entorno faltantes)');
 }
 
 // CONFIGURACION BROADCASTER
@@ -190,7 +190,7 @@ const BROADCASTER_VOICE_URL = 'https://api.broadcastermobile.com/broadcaster-voi
 if (BROADCASTER_API_KEY && BROADCASTER_AUTHORIZATION) {
   console.log('✅ Broadcaster configurado');
 } else {
-  console.log('⚠️  Broadcaster no configurado (faltan variables de entorno)');
+  console.log('⚠️ Broadcaster no configurado (faltan variables de entorno)');
 }
 
 // CONFIGURACION PROXY ESTATICO
@@ -211,8 +211,72 @@ if (PROXY_URL) {
   
   console.log('🔒 Todas las peticiones salientes usarán IP estática del proxy');
 } else {
-  console.log('⚠️  Proxy NO configurado - usando IP dinámica de Render');
+  console.log('⚠️ Proxy NO configurado - usando IP dinámica de Render');
 }
+
+// 🔐 ENDPOINT TEMPORAL PARA ACTUALIZAR CONTRASEÑA ADMIN
+// ⚠️ ELIMINAR DESPUÉS DE USAR
+app.post('/api/admin/reset-password', async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Se requieren currentPassword y newPassword' 
+      });
+    }
+    
+    if (newPassword.length < 8) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'La nueva contraseña debe tener al menos 8 caracteres' 
+      });
+    }
+    
+    // Buscar admin
+    const admin = await User.findOne({ username: 'admin' });
+    if (!admin) {
+      return res.status(404).json({ 
+        success: false, 
+        error: 'Usuario admin no encontrado' 
+      });
+    }
+    
+    // Validar contraseña actual
+    const validPassword = await bcrypt.compare(currentPassword, admin.password);
+    if (!validPassword) {
+      console.log('⚠️ Intento fallido de cambio de contraseña admin - contraseña incorrecta');
+      return res.status(401).json({ 
+        success: false, 
+        error: 'Contraseña actual incorrecta' 
+      });
+    }
+    
+    // Actualizar contraseña
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    admin.password = hashedPassword;
+    await admin.save();
+    
+    // Registrar en log
+    await ActivityLog.create({
+      username: 'admin',
+      message: 'Contraseña de administrador actualizada exitosamente',
+      type: 'success'
+    });
+    
+    console.log('✅ Contraseña de admin actualizada exitosamente');
+    console.log('⚠️ IMPORTANTE: Elimina este endpoint /api/admin/reset-password del código');
+    
+    res.json({ 
+      success: true, 
+      message: 'Contraseña actualizada exitosamente. Por favor, inicia sesión con la nueva contraseña.' 
+    });
+  } catch (error) {
+    console.error('❌ Error actualizando contraseña admin:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
 
 // ENDPOINTS DE AUTENTICACION
 app.post('/api/auth/login', async (req, res) => {
@@ -1383,7 +1447,7 @@ app.listen(PORT, () => {
   console.log('========================================');
   console.log('🚀 SERVIDOR HIBRIDO TWILIO + BROADCASTER');
   console.log('========================================');
-  console.log(`📍 URL: ${BASE_URL}`);
+  console.log(`🌐 URL: ${BASE_URL}`);
   console.log(`💾 MongoDB: ${mongoose.connection.readyState === 1 ? 'Conectada ✅' : 'Conectando... ⏳'}`);
   console.log(`⏰ Scheduler: Activo (revisa cada minuto)`);
   console.log(`🔌 Puerto: ${PORT}`);
