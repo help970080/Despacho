@@ -145,7 +145,8 @@ async function createAdminUser() {
   try {
     const adminExists = await User.findOne({ username: 'admin' });
     if (!adminExists) {
-      const hashedPassword = await bcrypt.hash('admin123', 10);
+      const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'CAMBIAR_INMEDIATAMENTE';
+      const hashedPassword = await bcrypt.hash(ADMIN_PASSWORD, 10);
       await User.create({
         username: 'admin',
         password: hashedPassword,
@@ -154,7 +155,10 @@ async function createAdminUser() {
         credits: 10000,
         role: 'admin'
       });
-      console.log('✅ Usuario admin creado: admin / admin123');
+      console.log('✅ Usuario admin creado: admin / [password desde variable de entorno]');
+      if (!process.env.ADMIN_PASSWORD) {
+        console.log('⚠️  ADVERTENCIA: Agrega ADMIN_PASSWORD a las variables de entorno');
+      }
     }
   } catch (error) {
     console.error('❌ Error creando admin:', error);
@@ -178,12 +182,16 @@ if (ACCOUNT_SID && AUTH_TOKEN) {
 }
 
 // CONFIGURACION BROADCASTER
-const BROADCASTER_API_KEY = process.env.BROADCASTER_API_KEY || '5031';
-const BROADCASTER_AUTHORIZATION = process.env.BROADCASTER_AUTHORIZATION || 'qNYY7U54Bb3rsG0VZu8on7bzE+w=';
+const BROADCASTER_API_KEY = process.env.BROADCASTER_API_KEY;
+const BROADCASTER_AUTHORIZATION = process.env.BROADCASTER_AUTHORIZATION;
 const BROADCASTER_SMS_URL = 'https://api.broadcastermobile.com/brdcstr-endpoint-web/services/messaging/';
 const BROADCASTER_VOICE_URL = 'https://api.broadcastermobile.com/broadcaster-voice-api/services/voice/sendCall';
 
-console.log('✅ Broadcaster configurado');
+if (BROADCASTER_API_KEY && BROADCASTER_AUTHORIZATION) {
+  console.log('✅ Broadcaster configurado');
+} else {
+  console.log('⚠️  Broadcaster no configurado (faltan variables de entorno)');
+}
 
 // CONFIGURACION PROXY ESTATICO
 const PROXY_URL = process.env.QUOTAGUARDSTATIC_URL || process.env.FIXIE_URL || null;
