@@ -16,8 +16,8 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // CONEXION A MONGODB
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/cobranza-system')
-.then(() => console.log('Conectado a MongoDB'))
-.catch(err => console.error('Error conectando a MongoDB:', err));
+.then(() => console.log('✅ Conectado a MongoDB'))
+.catch(err => console.error('❌ Error conectando a MongoDB:', err));
 
 // MODELOS DE MONGODB
 const userSchema = new mongoose.Schema({
@@ -113,17 +113,6 @@ const transactionSchema = new mongoose.Schema({
   timestamp: { type: Date, default: Date.now }
 });
 
-const User = mongoose.model('User', userSchema);
-const Template = mongoose.model('Template', templateSchema);
-const Client = mongoose.model('Client', clientSchema);
-const ScheduledCampaign = mongoose.model('ScheduledCampaign', scheduledCampaignSchema);
-const Stats = mongoose.model('Stats', statsSchema);
-const ActivityLog = mongoose.model('ActivityLog', activityLogSchema);
-const Transaction = mongoose.model('Transaction', transactionSchema);
-
-// ========================================
-// NUEVO SCHEMA: Historial detallado de llamadas/SMS
-// ========================================
 const callHistorySchema = new mongoose.Schema({
   username: { type: String, required: true, index: true },
   clientId: { type: mongoose.Schema.Types.ObjectId, ref: 'Client' },
@@ -142,6 +131,13 @@ const callHistorySchema = new mongoose.Schema({
   timestamp: { type: Date, default: Date.now, index: true }
 });
 
+const User = mongoose.model('User', userSchema);
+const Template = mongoose.model('Template', templateSchema);
+const Client = mongoose.model('Client', clientSchema);
+const ScheduledCampaign = mongoose.model('ScheduledCampaign', scheduledCampaignSchema);
+const Stats = mongoose.model('Stats', statsSchema);
+const ActivityLog = mongoose.model('ActivityLog', activityLogSchema);
+const Transaction = mongoose.model('Transaction', transactionSchema);
 const CallHistory = mongoose.model('CallHistory', callHistorySchema);
 
 // CREAR USUARIO ADMIN INICIAL
@@ -158,10 +154,10 @@ async function createAdminUser() {
         credits: 10000,
         role: 'admin'
       });
-      console.log('Usuario admin creado: admin / admin123');
+      console.log('✅ Usuario admin creado: admin / admin123');
     }
   } catch (error) {
-    console.error('Error creando admin:', error);
+    console.error('❌ Error creando admin:', error);
   }
 }
 createAdminUser();
@@ -176,9 +172,9 @@ const BASE_URL = process.env.RENDER_EXTERNAL_URL || process.env.BASE_URL || `htt
 let twilioClient = null;
 if (ACCOUNT_SID && AUTH_TOKEN) {
   twilioClient = twilio(ACCOUNT_SID, AUTH_TOKEN);
-  console.log('Twilio configurado');
+  console.log('✅ Twilio configurado');
 } else {
-  console.log('Twilio no configurado (variables de entorno faltantes)');
+  console.log('⚠️  Twilio no configurado (variables de entorno faltantes)');
 }
 
 // CONFIGURACION BROADCASTER
@@ -187,30 +183,27 @@ const BROADCASTER_AUTHORIZATION = process.env.BROADCASTER_AUTHORIZATION || 'qNYY
 const BROADCASTER_SMS_URL = 'https://api.broadcastermobile.com/brdcstr-endpoint-web/services/messaging/';
 const BROADCASTER_VOICE_URL = 'https://api.broadcastermobile.com/broadcaster-voice-api/services/voice/sendCall';
 
-console.log('Broadcaster configurado');
+console.log('✅ Broadcaster configurado');
 
-// CONFIGURACION PROXY ESTATICO (QuotaGuard o Fixie)
+// CONFIGURACION PROXY ESTATICO
 const PROXY_URL = process.env.QUOTAGUARDSTATIC_URL || process.env.FIXIE_URL || null;
 
-// Configuración de axios para usar proxy HTTPS correctamente
 let axiosConfig = {};
 
 if (PROXY_URL) {
   const proxyUrl = new URL(PROXY_URL);
   console.log(`✅ Proxy estático configurado: ${proxyUrl.hostname}:${proxyUrl.port || 80}`);
   
-  // Crear agente HTTPS que soporte proxy HTTP
   const httpsAgent = new HttpsProxyAgent(PROXY_URL);
   
   axiosConfig = {
     httpsAgent: httpsAgent,
-    proxy: false  // Desactivar proxy por defecto de axios
+    proxy: false
   };
   
   console.log('🔒 Todas las peticiones salientes usarán IP estática del proxy');
 } else {
   console.log('⚠️  Proxy NO configurado - usando IP dinámica de Render');
-  console.log('   Para IP estática, agrega QUOTAGUARDSTATIC_URL o FIXIE_URL a variables de entorno');
 }
 
 // ENDPOINTS DE AUTENTICACION
@@ -497,17 +490,6 @@ app.post('/api/logs', async (req, res) => {
 // FUNCIONES DE ENVIO - BROADCASTER
 async function sendBroadcasterSMS(phoneNumber, message) {
   try {
-    // Verificar IP publica
-    try {
-      const ipCheck = await axios.get('https://api.ipify.org?format=json', axiosConfig);
-      console.log('===========================================');
-      console.log('MI IP PUBLICA (SALIDA A INTERNET):', ipCheck.data.ip);
-      console.log('===========================================');
-      console.log(PROXY_URL ? '🔒 Usando IP estática del proxy' : '⚠️  Usando IP dinámica de Render');
-    } catch (e) {
-      console.log('No se pudo obtener IP:', e.message);
-    }
-
     let cleanNumber = phoneNumber.replace(/\D/g, '');
     if (cleanNumber.startsWith('52')) {
       cleanNumber = cleanNumber.substring(2);
@@ -516,19 +498,14 @@ async function sendBroadcasterSMS(phoneNumber, message) {
       throw new Error('Numero debe tener 10 digitos');
     }
 
-    console.log('📤 Enviando SMS a:', `52${cleanNumber}`);
-
-    // FORMATO SEGÚN CONFIGURACIÓN OFICIAL DE BROADCASTER
     const requestBody = {
       apiKey: parseInt(BROADCASTER_API_KEY),
-      country: 'MX',  // MAYÚSCULAS según Broadcaster
-      dial: 41414,  // Número sin comillas
+      country: 'MX',
+      dial: 41414,
       message: message,
-      msisdns: [parseInt(`52${cleanNumber}`)],  // Número en array
+      msisdns: [parseInt(`52${cleanNumber}`)],
       tag: 'sistema-cobranza'
     };
-
-    console.log('📋 Request Body:', JSON.stringify(requestBody, null, 2));
 
     const response = await axios.post(BROADCASTER_SMS_URL, requestBody, {
       ...axiosConfig,
@@ -539,30 +516,16 @@ async function sendBroadcasterSMS(phoneNumber, message) {
       }
     });
 
-    console.log('✅ Respuesta de Broadcaster:', response.status, response.data);
+    console.log('✅ SMS Broadcaster enviado:', response.status);
     return { success: true, data: response.data };
   } catch (error) {
-    console.error('❌ Error enviando SMS con Broadcaster:');
-    console.error('   Status:', error.response?.status);
-    console.error('   Data:', JSON.stringify(error.response?.data, null, 2));
-    console.error('   Message:', error.message);
+    console.error('❌ Error enviando SMS con Broadcaster:', error.response?.data || error.message);
     throw error;
   }
 }
 
 async function sendBroadcasterCall(phoneNumber, message) {
   try {
-    // Verificar IP publica
-    try {
-      const ipCheck = await axios.get('https://api.ipify.org?format=json', axiosConfig);
-      console.log('===========================================');
-      console.log('MI IP PUBLICA (VOICE):', ipCheck.data.ip);
-      console.log('===========================================');
-      console.log(PROXY_URL ? '🔒 Usando IP estática del proxy' : '⚠️  Usando IP dinámica de Render');
-    } catch (e) {
-      console.log('No se pudo obtener IP:', e.message);
-    }
-
     let cleanNumber = phoneNumber.replace(/\D/g, '');
     if (cleanNumber.startsWith('52')) {
       cleanNumber = cleanNumber.substring(2);
@@ -571,11 +534,8 @@ async function sendBroadcasterCall(phoneNumber, message) {
       throw new Error('Numero debe tener 10 digitos');
     }
 
-    console.log('📞 Haciendo llamada a:', `52${cleanNumber}`);
-
-    // FORMATO SEGÚN CONFIGURACIÓN OFICIAL DE BROADCASTER
     const requestBody = {
-      phoneNumber: `52${cleanNumber}`,  // String con 52 + 10 dígitos
+      phoneNumber: `52${cleanNumber}`,
       country: 'MX',
       message: {
         text: message,
@@ -586,30 +546,20 @@ async function sendBroadcasterCall(phoneNumber, message) {
       }
     };
 
-    console.log('📋 Voice Request Body:', JSON.stringify(requestBody, null, 2));
-    console.log('📋 Voice Headers:', JSON.stringify({
-      'Content-Type': 'application/json',
-      'api-key': '5031',
-      'Authorization': BROADCASTER_AUTHORIZATION
-    }, null, 2));
-
     const response = await axios.post(BROADCASTER_VOICE_URL, requestBody, {
       ...axiosConfig,
       timeout: 30000,
       headers: {
         'Content-Type': 'application/json',
-        'api-key': '5031',  // Como string según cURL de Broadcaster
+        'api-key': '5031',
         'Authorization': BROADCASTER_AUTHORIZATION
       }
     });
 
-    console.log('✅ Respuesta de Broadcaster Voice:', response.status, response.data);
+    console.log('✅ Llamada Broadcaster realizada:', response.status);
     return { success: true, data: response.data };
   } catch (error) {
-    console.error('❌ Error enviando llamada con Broadcaster:');
-    console.error('   Status:', error.response?.status);
-    console.error('   Data:', JSON.stringify(error.response?.data, null, 2));
-    console.error('   Message:', error.message);
+    console.error('❌ Error enviando llamada con Broadcaster:', error.response?.data || error.message);
     throw error;
   }
 }
@@ -742,7 +692,6 @@ app.post('/api/call-status', async (req, res) => {
     
     const duration = parseInt(CallDuration) || 0;
     
-    // Registrar en historial
     await logCallHistory({
       username: username,
       clientName: 'Desconocido',
@@ -819,7 +768,6 @@ app.post('/api/sms-status', async (req, res) => {
       return res.sendStatus(200);
     }
     
-    // Registrar en historial
     await logCallHistory({
       username: username,
       clientName: 'Desconocido',
@@ -865,7 +813,7 @@ app.post('/api/sms-status', async (req, res) => {
   }
 });
 
-// SCHEDULER - EJECUTAR CAMPAÑAS PROGRAMADAS
+// SCHEDULER
 cron.schedule('* * * * *', async () => {
   try {
     const now = new Date();
@@ -981,9 +929,6 @@ function replaceVariables(text, client) {
     .replace(/\{Compañia\}/g, client.Compañia || client.company);
 }
 
-// ========================================
-// FUNCIÓN HELPER: Registrar en historial
-// ========================================
 async function logCallHistory(data) {
   try {
     await CallHistory.create({
@@ -1040,14 +985,7 @@ app.get('/api/test', (req, res) => {
   });
 });
 
-// INICIAR SERVIDOR
-const PORT = process.env.PORT || 3000;
-
-// ========================================
-// ENDPOINTS DE ADMINISTRADOR
-// ========================================
-
-// Middleware para verificar si el usuario es admin
+// MIDDLEWARE PARA VERIFICAR ADMIN
 async function isAdmin(req, res, next) {
   try {
     const { username } = req.body;
@@ -1067,7 +1005,7 @@ async function isAdmin(req, res, next) {
   }
 }
 
-// GET - Obtener todos los usuarios (solo admin)
+// ENDPOINTS DE ADMINISTRADOR
 app.post('/api/admin/users', isAdmin, async (req, res) => {
   try {
     const users = await User.find({}, '-password')
@@ -1079,7 +1017,6 @@ app.post('/api/admin/users', isAdmin, async (req, res) => {
   }
 });
 
-// POST - Agregar/quitar créditos a un usuario (solo admin)
 app.post('/api/admin/users/:username/credits', isAdmin, async (req, res) => {
   try {
     const { username } = req.params;
@@ -1102,11 +1039,9 @@ app.post('/api/admin/users/:username/credits', isAdmin, async (req, res) => {
       return res.status(400).json({ success: false, error: 'Saldo insuficiente' });
     }
     
-    // Actualizar créditos
     user.credits = balanceAfter;
     await user.save();
     
-    // Registrar transacción
     await Transaction.create({
       username: username,
       type: amount > 0 ? 'add' : 'deduct',
@@ -1117,7 +1052,6 @@ app.post('/api/admin/users/:username/credits', isAdmin, async (req, res) => {
       adminUser: adminUsername
     });
     
-    // Log de actividad
     await ActivityLog.create({
       username: adminUsername,
       message: `${amount > 0 ? 'Agregó' : 'Dedujo'} ${Math.abs(amount)} créditos ${amount > 0 ? 'a' : 'de'} ${username}`,
@@ -1134,7 +1068,6 @@ app.post('/api/admin/users/:username/credits', isAdmin, async (req, res) => {
   }
 });
 
-// GET - Obtener historial de transacciones (solo admin)
 app.post('/api/admin/transactions', isAdmin, async (req, res) => {
   try {
     const { filterUsername, limit = 100 } = req.body;
@@ -1151,7 +1084,6 @@ app.post('/api/admin/transactions', isAdmin, async (req, res) => {
   }
 });
 
-// GET - Obtener todas las transacciones de un usuario específico
 app.get('/api/transactions/:username', async (req, res) => {
   try {
     const { username } = req.params;
@@ -1166,7 +1098,6 @@ app.get('/api/transactions/:username', async (req, res) => {
   }
 });
 
-// POST - Eliminar usuario (solo admin)
 app.post('/api/admin/users/:username/delete', isAdmin, async (req, res) => {
   try {
     const { username } = req.params;
@@ -1185,7 +1116,6 @@ app.post('/api/admin/users/:username/delete', isAdmin, async (req, res) => {
       return res.status(404).json({ success: false, error: 'Usuario no encontrado' });
     }
     
-    // Eliminar todos los datos del usuario
     await User.deleteOne({ username });
     await Template.deleteMany({ username });
     await Client.deleteMany({ username });
@@ -1194,7 +1124,6 @@ app.post('/api/admin/users/:username/delete', isAdmin, async (req, res) => {
     await ActivityLog.deleteMany({ username });
     await Transaction.deleteMany({ username });
     
-    // Log de actividad
     await ActivityLog.create({
       username: adminUsername,
       message: `Eliminó la cuenta de usuario: ${username}`,
@@ -1207,7 +1136,6 @@ app.post('/api/admin/users/:username/delete', isAdmin, async (req, res) => {
   }
 });
 
-// POST - Cambiar rol de usuario (solo admin)
 app.post('/api/admin/users/:username/role', isAdmin, async (req, res) => {
   try {
     const { username } = req.params;
@@ -1230,7 +1158,6 @@ app.post('/api/admin/users/:username/role', isAdmin, async (req, res) => {
     user.role = role;
     await user.save();
     
-    // Log de actividad
     await ActivityLog.create({
       username: adminUsername,
       message: `Cambió el rol de ${username} a ${role}`,
@@ -1243,11 +1170,118 @@ app.post('/api/admin/users/:username/role', isAdmin, async (req, res) => {
   }
 });
 
-// ========================================
-// NUEVOS ENDPOINTS DE ESTADÍSTICAS AVANZADAS
-// ========================================
+// ENDPOINT DE ESTADÍSTICAS GLOBALES (ADMIN)
+app.post('/api/admin/global-stats', isAdmin, async (req, res) => {
+  try {
+    console.log('📊 Obteniendo estadísticas globales...');
+    
+    const users = await User.find({}, 'username credits');
+    console.log(`✅ ${users.length} usuarios encontrados`);
+    
+    const allStats = await Stats.find({});
+    console.log(`✅ ${allStats.length} estadísticas encontradas`);
+    
+    let totalMessages = 0;
+    let totalCalls = 0;
+    let totalSuccess = 0;
+    let totalErrors = 0;
+    let totalPending = 0;
+    
+    const userActivity = {
+      labels: [],
+      values: []
+    };
+    
+    const creditsUsage = {
+      labels: [],
+      values: []
+    };
+    
+    for (const user of users) {
+      const stats = allStats.find(s => s.username === user.username);
+      if (stats) {
+        const userTotal = stats.total || 0;
+        totalMessages += (stats.success || 0);
+        totalCalls += (stats.callAnswered || 0) + (stats.callBusy || 0) + (stats.callNoAnswer || 0) + (stats.callRejected || 0);
+        totalSuccess += stats.success || 0;
+        totalErrors += stats.errors || 0;
+        totalPending += stats.pending || 0;
+        
+        if (userTotal > 0) {
+          userActivity.labels.push(user.username);
+          userActivity.values.push(userTotal);
+        }
+      }
+      
+      creditsUsage.labels.push(user.username);
+      creditsUsage.values.push(user.credits || 0);
+    }
+    
+    console.log(`📈 Total mensajes: ${totalMessages}, Total llamadas: ${totalCalls}`);
+    
+    const totalCampaigns = await ScheduledCampaign.countDocuments();
+    console.log(`📋 Total campañas: ${totalCampaigns}`);
+    
+    const successRate = (totalSuccess + totalErrors) > 0 
+      ? Math.round((totalSuccess / (totalSuccess + totalErrors)) * 100) + '%'
+      : '0%';
+    
+    const messageStatus = {
+      success: totalSuccess,
+      errors: totalErrors,
+      pending: totalPending
+    };
+    
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    
+    const recentHistory = await CallHistory.find({
+      timestamp: { $gte: sevenDaysAgo }
+    });
+    
+    const dailyData = Array(7).fill(null).map(() => ({ messages: 0, calls: 0 }));
+    
+    recentHistory.forEach(record => {
+      const daysAgo = Math.floor((Date.now() - new Date(record.timestamp).getTime()) / (1000 * 60 * 60 * 24));
+      if (daysAgo >= 0 && daysAgo < 7) {
+        const index = 6 - daysAgo;
+        if (record.type === 'sms') {
+          dailyData[index].messages++;
+        } else if (record.type === 'call') {
+          dailyData[index].calls++;
+        }
+      }
+    });
+    
+    const weeklyActivity = {
+      messages: dailyData.map(d => d.messages),
+      calls: dailyData.map(d => d.calls)
+    };
+    
+    const response = {
+      success: true,
+      stats: {
+        totalCampaigns,
+        totalMessages,
+        totalCalls,
+        successRate,
+        userActivity,
+        messageStatus,
+        creditsUsage,
+        weeklyActivity
+      }
+    };
+    
+    console.log('✅ Estadísticas calculadas exitosamente');
+    
+    res.json(response);
+  } catch (error) {
+    console.error('❌ Error obteniendo estadísticas:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
 
-// Obtener historial detallado de llamadas/SMS
+// ESTADÍSTICAS AVANZADAS
 app.get('/api/call-history/:username', async (req, res) => {
   try {
     const { username } = req.params;
@@ -1268,7 +1302,6 @@ app.get('/api/call-history/:username', async (req, res) => {
   }
 });
 
-// Estadísticas avanzadas con análisis temporal
 app.get('/api/stats-advanced/:username', async (req, res) => {
   try {
     const { username } = req.params;
@@ -1325,7 +1358,6 @@ app.get('/api/stats-advanced/:username', async (req, res) => {
   }
 });
 
-// Registrar manualmente en historial
 app.post('/api/call-history', async (req, res) => {
   try {
     const { username, clientId, clientName, phone, type, status, duration, cost, provider, campaignId } = req.body;
@@ -1336,15 +1368,19 @@ app.post('/api/call-history', async (req, res) => {
   }
 });
 
+// INICIAR SERVIDOR
+const PORT = process.env.PORT || 3000;
+
 app.listen(PORT, () => {
   console.log('========================================');
-  console.log('SERVIDOR HIBRIDO TWILIO + BROADCASTER');
+  console.log('🚀 SERVIDOR HIBRIDO TWILIO + BROADCASTER');
   console.log('========================================');
-  console.log(`URL: ${BASE_URL}`);
-  console.log(`MongoDB: ${mongoose.connection.readyState === 1 ? 'Conectada' : 'Conectando...'}`);
-  console.log(`Scheduler: Activo (revisa cada minuto)`);
-  console.log(`Puerto: ${PORT}`);
-  console.log(`Twilio: ${twilioClient ? 'Configurado' : 'No configurado'}`);
-  console.log(`Broadcaster: Configurado`);
+  console.log(`📍 URL: ${BASE_URL}`);
+  console.log(`💾 MongoDB: ${mongoose.connection.readyState === 1 ? 'Conectada ✅' : 'Conectando... ⏳'}`);
+  console.log(`⏰ Scheduler: Activo (revisa cada minuto)`);
+  console.log(`🔌 Puerto: ${PORT}`);
+  console.log(`📞 Twilio: ${twilioClient ? 'Configurado ✅' : 'No configurado ⚠️'}`);
+  console.log(`📡 Broadcaster: Configurado ✅`);
+  console.log(`🔒 Proxy: ${PROXY_URL ? 'IP Estática Activa ✅' : 'IP Dinámica ⚠️'}`);
   console.log('========================================\n');
 });
