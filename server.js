@@ -121,6 +121,29 @@ const Stats = mongoose.model('Stats', statsSchema);
 const ActivityLog = mongoose.model('ActivityLog', activityLogSchema);
 const Transaction = mongoose.model('Transaction', transactionSchema);
 
+// ========================================
+// NUEVO SCHEMA: Historial detallado de llamadas/SMS
+// ========================================
+const callHistorySchema = new mongoose.Schema({
+  username: { type: String, required: true, index: true },
+  clientId: { type: mongoose.Schema.Types.ObjectId, ref: 'Client' },
+  clientName: String,
+  phone: String,
+  type: { type: String, enum: ['sms', 'call'], required: true },
+  status: { 
+    type: String, 
+    enum: ['completed', 'answered', 'busy', 'no-answer', 'failed', 'rejected', 'sent', 'delivered', 'undelivered'],
+    required: true 
+  },
+  duration: { type: Number, default: 0 },
+  cost: { type: Number, default: 0 },
+  provider: { type: String, enum: ['twilio', 'broadcaster'] },
+  campaignId: { type: mongoose.Schema.Types.ObjectId, ref: 'ScheduledCampaign' },
+  timestamp: { type: Date, default: Date.now, index: true }
+});
+
+const CallHistory = mongoose.model('CallHistory', callHistorySchema);
+
 // CREAR USUARIO ADMIN INICIAL
 async function createAdminUser() {
   try {
@@ -712,6 +735,23 @@ app.post('/api/call-status', async (req, res) => {
     
     console.log(`Llamada ${CallSid} a ${To}: ${CallStatus} (${CallDuration || 0}s) - Usuario: ${username}`);
     
+    // Registrar en historial
+    const duration = parseInt(CallDuration) || 0;
+    await logCallHistory({
+      username: username,
+      clientName: 'Desconocido',
+      phone: To,
+      type: 'call',
+      status: CallStatus === 'completed' && duration > 0 ? 'answered' 
+             : CallStatus === 'completed' && duration === 0 ? 'no-answer'
+             : CallStatus === 'busy' ? 'busy'
+             : CallStatus === 'failed' ? 'failed'
+             : 'rejected',
+      duration: duration,
+      cost: 2,
+      provider: 'twilio'
+    });
+    
     if (!username) {
       console.error('Username no proporcionado en webhook');
       return res.sendStatus(200);
@@ -774,6 +814,19 @@ app.post('/api/sms-status', async (req, res) => {
     const username = req.query.username;
     
     console.log(`SMS ${MessageSid} a ${To}: ${MessageStatus} - Usuario: ${username}${ErrorCode ? ` (Error: ${ErrorCode})` : ''}`);
+    
+    // Registrar en historial
+    await logCallHistory({
+      username: username,
+      clientName: 'Desconocido',
+      phone: To,
+      type: 'sms',
+      status: MessageStatus === 'delivered' ? 'delivered' 
+             : MessageStatus === 'sent' ? 'sent'
+             : 'undelivered',
+      cost: 1,
+      provider: 'twilio'
+    });
     
     if (!username) {
       console.error('Username no proporcionado en webhook');
@@ -927,6 +980,28 @@ function replaceVariables(text, client) {
     .replace(/\{Telefono\}/g, client.Telefono || client.phone)
     .replace(/\{Deuda\}/g, client.Deuda || client.debt)
     .replace(/\{Compañia\}/g, client.Compañia || client.company);
+}
+
+// ========================================
+// FUNCIÓN HELPER: Registrar en historial
+// ========================================
+async function logCallHistory(data) {
+  try {
+    await CallHistory.create({
+      username: data.username,
+      clientId: data.clientId,
+      clientName: data.clientName,
+      phone: data.phone,
+      type: data.type,
+      status: data.status,
+      duration: data.duration || 0,
+      cost: data.cost || 0,
+      provider: data.provider,
+      campaignId: data.campaignId
+    });
+  } catch (error) {
+    console.error('Error logging call history:', error);
+  }
 }
 
 // Endpoint para verificar IP publica
@@ -1164,6 +1239,99 @@ app.post('/api/admin/users/:username/role', isAdmin, async (req, res) => {
     });
     
     res.json({ success: true, message: `Rol actualizado a ${role}` });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ========================================
+// NUEVOS ENDPOINTS DE ESTADÍSTICAS AVANZADAS
+// ========================================
+
+// Obtener historial detallado de llamadas/SMS
+app.get('/api/call-history/:username', async (req, res) => {
+  try {
+    const { username } = req.params;
+    const { limit = 50, type, status } = req.query;
+    
+    let query = { username };
+    if (type) query.type = type;
+    if (status) query.status = status;
+    
+    const history = await CallHistory.find(query)
+      .sort({ timestamp: -1 })
+      .limit(parseInt(limit))
+      .lean();
+    
+    res.json({ success: true, history });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Estadísticas avanzadas con análisis temporal
+app.get('/api/stats-advanced/:username', async (req, res) => {
+  try {
+    const { username } = req.params;
+    const basicStats = await Stats.findOne({ username });
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const weeklyHistory = await CallHistory.find({ username, timestamp: { $gte: sevenDaysAgo } });
+    const dailyStats = {};
+    weeklyHistory.forEach(call => {
+      const day = call.timestamp.toISOString().split('T')[0];
+      if (!dailyStats[day]) dailyStats[day] = { total: 0, success: 0, failed: 0, sms: 0, calls: 0 };
+      dailyStats[day].total++;
+      if (call.type === 'sms') dailyStats[day].sms++;
+      if (call.type === 'call') dailyStats[day].calls++;
+      if (['answered', 'completed', 'delivered'].includes(call.status)) {
+        dailyStats[day].success++;
+      } else {
+        dailyStats[day].failed++;
+      }
+    });
+    const hourlyStats = Array(24).fill(null).map(() => ({ total: 0, success: 0 }));
+    weeklyHistory.forEach(call => {
+      const hour = call.timestamp.getHours();
+      hourlyStats[hour].total++;
+      if (['answered', 'completed', 'delivered'].includes(call.status)) hourlyStats[hour].success++;
+    });
+    let bestHour = { hour: 10, successRate: 0 };
+    hourlyStats.forEach((stat, hour) => {
+      if (stat.total > 0) {
+        const rate = (stat.success / stat.total) * 100;
+        if (rate > bestHour.successRate) bestHour = { hour, successRate: rate };
+      }
+    });
+    const smsStats = weeklyHistory.filter(h => h.type === 'sms');
+    const callStats = weeklyHistory.filter(h => h.type === 'call');
+    const comparison = {
+      sms: {
+        total: smsStats.length,
+        success: smsStats.filter(s => ['delivered', 'completed'].includes(s.status)).length,
+        successRate: smsStats.length > 0 ? ((smsStats.filter(s => ['delivered', 'completed'].includes(s.status)).length / smsStats.length) * 100).toFixed(2) : 0
+      },
+      calls: {
+        total: callStats.length,
+        success: callStats.filter(c => c.status === 'answered').length,
+        successRate: callStats.length > 0 ? ((callStats.filter(c => c.status === 'answered').length / callStats.length) * 100).toFixed(2) : 0
+      }
+    };
+    res.json({
+      success: true,
+      stats: { basic: basicStats || { total: 0, success: 0, errors: 0, pending: 0, callAnswered: 0, callRejected: 0, callBusy: 0, callNoAnswer: 0 }, daily: dailyStats, hourly: hourlyStats, bestHour, comparison, weeklyTotal: weeklyHistory.length }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Registrar manualmente en historial
+app.post('/api/call-history', async (req, res) => {
+  try {
+    const { username, clientId, clientName, phone, type, status, duration, cost, provider, campaignId } = req.body;
+    const history = await CallHistory.create({ username, clientId, clientName, phone, type, status, duration: duration || 0, cost: cost || 0, provider, campaignId });
+    res.json({ success: true, history });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }

@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Estadísticas Avanzadas + IA</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1600px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      overflow: hidden;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 30px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .header h1 {
+      font-size: 2em;
+    }
+
+    .back-btn {
+      background: rgba(255,255,255,0.2);
+      border: 2px solid white;
+      color: white;
+      padding: 12px 25px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 1em;
+      transition: all 0.3s;
+      text-decoration: none;
+      display: inline-block;
+    }
+
+    .back-btn:hover {
+      background: white;
+      color: #667eea;
+    }
+
+    .content {
+      padding: 30px;
+    }
+
+    .section {
+      background: #f8f9fa;
+      border-radius: 15px;
+      padding: 25px;
+      margin-bottom: 25px;
+      border: 2px solid #e9ecef;
+    }
+
+    .section h2 {
+      color: #667eea;
+      margin-bottom: 20px;
+      font-size: 1.5em;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin-bottom: 25px;
+    }
+
+    .stat-card {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      text-align: center;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      transition: all 0.3s;
+    }
+
+    .stat-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+    }
+
+    .stat-icon {
+      font-size: 2em;
+      margin-bottom: 10px;
+    }
+
+    .stat-number {
+      font-size: 2.5em;
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+
+    .stat-label {
+      color: #666;
+      font-size: 0.9em;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .stat-number.success { color: #10b981; }
+    .stat-number.error { color: #ef4444; }
+    .stat-number.warning { color: #f59e0b; }
+    .stat-number.info { color: #3b82f6; }
+    .stat-number.purple { color: #8b5cf6; }
+
+    .chart-container {
+      position: relative;
+      height: 350px;
+      margin-bottom: 20px;
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+    }
+
+    .two-columns {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    @media (max-width: 968px) {
+      .two-columns {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* AI Message Generator */
+    .ai-section {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 30px;
+      border-radius: 15px;
+      margin-bottom: 25px;
+    }
+
+    .ai-section h2 {
+      color: white;
+      margin-bottom: 20px;
+    }
+
+    .ai-controls {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+
+    .form-group {
+      margin-bottom: 15px;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+      font-size: 0.9em;
+      opacity: 0.9;
+    }
+
+    .form-group input,
+    .form-group select {
+      width: 100%;
+      padding: 12px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-radius: 8px;
+      font-size: 1em;
+      background: rgba(255,255,255,0.9);
+      color: #333;
+    }
+
+    .btn {
+      padding: 12px 25px;
+      border: none;
+      border-radius: 8px;
+      font-size: 1em;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-primary {
+      background: white;
+      color: #667eea;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(255,255,255,0.3);
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .ai-result {
+      background: rgba(255,255,255,0.95);
+      padding: 20px;
+      border-radius: 10px;
+      margin-top: 20px;
+      color: #333;
+      display: none;
+    }
+
+    .ai-result.show {
+      display: block;
+      animation: slideIn 0.3s ease;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(-10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .message-preview {
+      background: #f8f9fa;
+      padding: 15px;
+      border-radius: 8px;
+      margin: 10px 0;
+      border-left: 4px solid #667eea;
+      font-size: 1.05em;
+      line-height: 1.6;
+    }
+
+    .char-counter {
+      text-align: right;
+      font-size: 0.9em;
+      margin-top: 5px;
+      font-weight: 600;
+    }
+
+    .char-counter.ok { color: #10b981; }
+    .char-counter.warning { color: #f59e0b; }
+    .char-counter.error { color: #ef4444; }
+
+    .suggestions {
+      margin-top: 15px;
+    }
+
+    .suggestion-title {
+      font-weight: 600;
+      color: #667eea;
+      margin-bottom: 10px;
+    }
+
+    .suggestion-item {
+      background: white;
+      padding: 10px 15px;
+      border-radius: 6px;
+      margin-bottom: 8px;
+      border-left: 3px solid #667eea;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .suggestion-item:hover {
+      background: #667eea;
+      color: white;
+      transform: translateX(5px);
+    }
+
+    .loading {
+      text-align: center;
+      padding: 20px;
+      font-size: 1.2em;
+    }
+
+    .spinner {
+      border: 4px solid rgba(255,255,255,0.3);
+      border-top: 4px solid white;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 10px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .call-status-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+      background: white;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .call-status-table th,
+    .call-status-table td {
+      padding: 12px 15px;
+      text-align: left;
+      border-bottom: 1px solid #e9ecef;
+    }
+
+    .call-status-table th {
+      background: #667eea;
+      color: white;
+      font-weight: 600;
+    }
+
+    .call-status-table tr:hover {
+      background: #f8f9fa;
+    }
+
+    .status-badge {
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 0.85em;
+      font-weight: 600;
+    }
+
+    .status-completed { background: #d1fae5; color: #065f46; }
+    .status-answered { background: #d1fae5; color: #065f46; }
+    .status-busy { background: #fed7aa; color: #92400e; }
+    .status-no-answer { background: #fecaca; color: #991b1b; }
+    .status-failed { background: #fecaca; color: #991b1b; }
+    .status-rejected { background: #e5e7eb; color: #374151; }
+
+    .progress-bar {
+      width: 100%;
+      height: 8px;
+      background: #e9ecef;
+      border-radius: 4px;
+      overflow: hidden;
+      margin: 5px 0;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #667eea, #764ba2);
+      transition: width 0.3s ease;
+    }
+
+    .metric-comparison {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 10px;
+      font-size: 0.9em;
+    }
+
+    .trend-up {
+      color: #10b981;
+      font-weight: 600;
+    }
+
+    .trend-down {
+      color: #ef4444;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>📊 Estadísticas Avanzadas + 🤖 IA</h1>
+      <a href="javascript:history.back()" class="back-btn">← Volver</a>
+    </div>
+
+    <div class="content">
+      <!-- AI MESSAGE GENERATOR -->
+      <div class="ai-section">
+        <h2>🤖 Generador de Mensajes con IA</h2>
+        <div class="ai-controls">
+          <div class="form-group">
+            <label>Nombre del Cliente</label>
+            <input type="text" id="aiClientName" placeholder="Ej: Juan Pérez">
+          </div>
+          <div class="form-group">
+            <label>Monto de Deuda ($)</label>
+            <input type="number" id="aiDebtAmount" placeholder="Ej: 5000">
+          </div>
+          <div class="form-group">
+            <label>Días de Atraso</label>
+            <input type="number" id="aiDaysLate" placeholder="Ej: 15">
+          </div>
+          <div class="form-group">
+            <label>Tipo de Mensaje</label>
+            <select id="aiMessageType">
+              <option value="cobranza">Cobranza</option>
+              <option value="marketing">Marketing</option>
+            </select>
+          </div>
+        </div>
+        
+        <div class="form-group" style="max-width: 400px;">
+          <label>Producto/Servicio (solo para Marketing)</label>
+          <input type="text" id="aiProduct" placeholder="Ej: Préstamo Personal">
+        </div>
+
+        <button class="btn btn-primary" onclick="generateAIMessage()">
+          ✨ Generar Mensajes con IA
+        </button>
+
+        <div id="aiResult" class="ai-result">
+          <div class="loading" id="aiLoading">
+            <div class="spinner"></div>
+            Generando mensajes optimizados...
+          </div>
+          <div id="aiContent" style="display: none;"></div>
+        </div>
+      </div>
+
+      <!-- ESTADÍSTICAS GENERALES -->
+      <div class="section">
+        <h2>📈 Resumen General</h2>
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-icon">📞</div>
+            <div class="stat-number info" id="totalCalls">0</div>
+            <div class="stat-label">Total Llamadas</div>
+            <div class="metric-comparison">
+              <span class="trend-up">↑ 12% vs semana pasada</span>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">✅</div>
+            <div class="stat-number success" id="successCalls">0</div>
+            <div class="stat-label">Contestadas</div>
+            <div class="progress-bar">
+              <div class="progress-fill" id="successProgress" style="width: 0%"></div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">📵</div>
+            <div class="stat-number error" id="failedCalls">0</div>
+            <div class="stat-label">Fallidas</div>
+            <div class="progress-bar">
+              <div class="progress-fill" id="failedProgress" style="width: 0%; background: #ef4444;"></div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">⏱️</div>
+            <div class="stat-number warning" id="busyCalls">0</div>
+            <div class="stat-label">Ocupado</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">🔕</div>
+            <div class="stat-number purple" id="noAnswerCalls">0</div>
+            <div class="stat-label">Sin Respuesta</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">🚫</div>
+            <div class="stat-number" style="color: #6b7280;" id="rejectedCalls">0</div>
+            <div class="stat-label">Rechazadas</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">💬</div>
+            <div class="stat-number info" id="totalSMS">0</div>
+            <div class="stat-label">Total SMS</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">🎯</div>
+            <div class="stat-number success" id="successRate">0%</div>
+            <div class="stat-label">Tasa de Éxito</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- GRÁFICOS -->
+      <div class="two-columns">
+        <div class="section">
+          <h2>📊 Distribución de Estados</h2>
+          <div class="chart-container">
+            <canvas id="statusChart"></canvas>
+          </div>
+        </div>
+
+        <div class="section">
+          <h2>📈 Tendencia Semanal</h2>
+          <div class="chart-container">
+            <canvas id="trendChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <h2>⏰ Rendimiento por Hora del Día</h2>
+        <div class="chart-container" style="height: 300px;">
+          <canvas id="hourlyChart"></canvas>
+        </div>
+      </div>
+
+      <!-- TABLA DETALLADA DE LLAMADAS -->
+      <div class="section">
+        <h2>📋 Detalle de Llamadas Recientes</h2>
+        <table class="call-status-table">
+          <thead>
+            <tr>
+              <th>Cliente</th>
+              <th>Teléfono</th>
+              <th>Estado</th>
+              <th>Duración</th>
+              <th>Fecha/Hora</th>
+              <th>Tipo</th>
+            </tr>
+          </thead>
+          <tbody id="callsTableBody">
+            <tr>
+              <td colspan="6" style="text-align: center; padding: 40px; color: #999;">
+                Cargando llamadas...
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- COMPARATIVA SMS VS LLAMADAS -->
+      <div class="section">
+        <h2>🔄 Comparativa: SMS vs Llamadas</h2>
+        <div class="chart-container">
+          <canvas id="comparisonChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = window.location.origin + '/api';
+    let currentUser = JSON.parse(sessionStorage.getItem('current_user') || '{}');
+
+    // CARGAR ESTADÍSTICAS
+    async function loadStats() {
+      try {
+        const response = await fetch(`${API_BASE}/stats/${currentUser.username}`);
+        const data = await response.json();
+
+        if (data.success) {
+          const stats = data.stats;
+          
+          // Actualizar números
+          document.getElementById('totalCalls').textContent = stats.total || 0;
+          document.getElementById('successCalls').textContent = stats.callAnswered || 0;
+          document.getElementById('failedCalls').textContent = stats.errors || 0;
+          document.getElementById('busyCalls').textContent = stats.callBusy || 0;
+          document.getElementById('noAnswerCalls').textContent = stats.callNoAnswer || 0;
+          document.getElementById('rejectedCalls').textContent = stats.callRejected || 0;
+          document.getElementById('totalSMS').textContent = stats.success || 0;
+          
+          const successRate = stats.total > 0 
+            ? Math.round((stats.callAnswered / stats.total) * 100)
+            : 0;
+          document.getElementById('successRate').textContent = successRate + '%';
+
+          // Actualizar barras de progreso
+          document.getElementById('successProgress').style.width = successRate + '%';
+          const failRate = stats.total > 0 
+            ? Math.round((stats.errors / stats.total) * 100)
+            : 0;
+          document.getElementById('failedProgress').style.width = failRate + '%';
+
+          // Crear gráficos
+          createStatusChart(stats);
+          createTrendChart();
+          createHourlyChart();
+          createComparisonChart(stats);
+        }
+      } catch (error) {
+        console.error('Error cargando estadísticas:', error);
+      }
+    }
+
+    // GRÁFICO DE ESTADOS
+    function createStatusChart(stats) {
+      const ctx = document.getElementById('statusChart').getContext('2d');
+      new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: ['Contestadas', 'Sin Respuesta', 'Ocupado', 'Rechazadas', 'Fallidas'],
+          datasets: [{
+            data: [
+              stats.callAnswered || 0,
+              stats.callNoAnswer || 0,
+              stats.callBusy || 0,
+              stats.callRejected || 0,
+              stats.errors || 0
+            ],
+            backgroundColor: [
+              '#10b981',
+              '#8b5cf6',
+              '#f59e0b',
+              '#6b7280',
+              '#ef4444'
+            ]
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'bottom'
+            }
+          }
+        }
+      });
+    }
+
+    // GRÁFICO DE TENDENCIA
+    function createTrendChart() {
+      const ctx = document.getElementById('trendChart').getContext('2d');
+      const days = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+      
+      new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: days,
+          datasets: [{
+            label: 'Llamadas Exitosas',
+            data: [65, 78, 90, 81, 96, 45, 30],
+            borderColor: '#10b981',
+            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+            tension: 0.4,
+            fill: true
+          }, {
+            label: 'Llamadas Fallidas',
+            data: [28, 32, 25, 38, 22, 15, 10],
+            borderColor: '#ef4444',
+            backgroundColor: 'rgba(239, 68, 68, 0.1)',
+            tension: 0.4,
+            fill: true
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'top'
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true
+            }
+          }
+        }
+      });
+    }
+
+    // GRÁFICO POR HORA
+    function createHourlyChart() {
+      const ctx = document.getElementById('hourlyChart').getContext('2d');
+      const hours = [];
+      for (let i = 9; i <= 20; i++) {
+        hours.push(i + ':00');
+      }
+      
+      new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: hours,
+          datasets: [{
+            label: 'Tasa de Éxito (%)',
+            data: [45, 52, 68, 75, 82, 78, 72, 85, 80, 75, 65, 50],
+            backgroundColor: 'rgba(102, 126, 234, 0.7)',
+            borderColor: '#667eea',
+            borderWidth: 2
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              display: false
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              max: 100,
+              ticks: {
+                callback: function(value) {
+                  return value + '%';
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // GRÁFICO COMPARATIVO
+    function createComparisonChart(stats) {
+      const ctx = document.getElementById('comparisonChart').getContext('2d');
+      
+      new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: ['Tasa de Éxito', 'Costo Promedio', 'Tiempo de Respuesta'],
+          datasets: [{
+            label: 'SMS',
+            data: [85, 0.5, 2],
+            backgroundColor: 'rgba(102, 126, 234, 0.7)'
+          }, {
+            label: 'Llamadas',
+            data: [65, 2.5, 30],
+            backgroundColor: 'rgba(118, 75, 162, 0.7)'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: {
+              beginAtZero: true
+            }
+          }
+        }
+      });
+    }
+
+    // CARGAR TABLA DE LLAMADAS
+    async function loadCallsTable() {
+      // Datos de ejemplo - conectar con tu API real
+      const mockCalls = [
+        { client: 'Juan Pérez', phone: '5551234567', status: 'answered', duration: '2:34', date: '2025-11-05 10:30', type: 'Cobranza' },
+        { client: 'María García', phone: '5559876543', status: 'no-answer', duration: '-', date: '2025-11-05 10:28', type: 'Cobranza' },
+        { client: 'Carlos López', phone: '5552468135', status: 'busy', duration: '-', date: '2025-11-05 10:25', type: 'Marketing' },
+        { client: 'Ana Martínez', phone: '5557890123', status: 'answered', duration: '4:12', date: '2025-11-05 10:20', type: 'Cobranza' },
+        { client: 'Pedro Sánchez', phone: '5553216549', status: 'rejected', duration: '-', date: '2025-11-05 10:15', type: 'Cobranza' }
+      ];
+
+      const tbody = document.getElementById('callsTableBody');
+      tbody.innerHTML = mockCalls.map(call => `
+        <tr>
+          <td><strong>${call.client}</strong></td>
+          <td>${call.phone}</td>
+          <td><span class="status-badge status-${call.status}">${getStatusText(call.status)}</span></td>
+          <td>${call.duration}</td>
+          <td>${call.date}</td>
+          <td>${call.type}</td>
+        </tr>
+      `).join('');
+    }
+
+    function getStatusText(status) {
+      const texts = {
+        'answered': 'Contestada',
+        'no-answer': 'Sin Respuesta',
+        'busy': 'Ocupado',
+        'rejected': 'Rechazada',
+        'failed': 'Fallida'
+      };
+      return texts[status] || status;
+    }
+
+    // GENERAR MENSAJE CON IA
+    async function generateAIMessage() {
+      const name = document.getElementById('aiClientName').value;
+      const debt = document.getElementById('aiDebtAmount').value;
+      const days = document.getElementById('aiDaysLate').value;
+      const type = document.getElementById('aiMessageType').value;
+      const product = document.getElementById('aiProduct').value;
+
+      if (!name || !debt) {
+        alert('Por favor completa al menos el nombre y monto de deuda');
+        return;
+      }
+
+      const resultDiv = document.getElementById('aiResult');
+      const loadingDiv = document.getElementById('aiLoading');
+      const contentDiv = document.getElementById('aiContent');
+
+      resultDiv.classList.add('show');
+      loadingDiv.style.display = 'block';
+      contentDiv.style.display = 'none';
+
+      try {
+        const response = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: 'claude-sonnet-4-20250514',
+            max_tokens: 1000,
+            messages: [{
+              role: 'user',
+              content: type === 'cobranza' 
+                ? `Genera 3 mensajes de cobranza persuasivos y respetuosos para SMS. 
+                   Cliente: ${name}
+                   Deuda: $${debt}
+                   Días de atraso: ${days || 'No especificado'}
+                   
+                   Requisitos CRÍTICOS:
+                   - Cada mensaje debe tener MÁXIMO 163 caracteres (incluyendo espacios)
+                   - Usar tono profesional pero empático
+                   - Incluir llamado a la acción claro
+                   - NO usar el nombre del cliente si hace que supere los 163 caracteres
+                   - Enfocarse en la urgencia pero sin amenazas
+                   
+                   Responde SOLO con un JSON válido en este formato:
+                   {
+                     "messages": [
+                       {"text": "mensaje 1", "chars": número},
+                       {"text": "mensaje 2", "chars": número},
+                       {"text": "mensaje 3", "chars": número}
+                     ],
+                     "tips": ["tip1", "tip2", "tip3"]
+                   }
+                   
+                   NO agregues texto adicional, SOLO el JSON.`
+                : `Genera 3 mensajes de marketing atractivos para SMS.
+                   Cliente: ${name}
+                   Producto/Servicio: ${product || 'servicios financieros'}
+                   
+                   Requisitos CRÍTICOS:
+                   - Cada mensaje debe tener MÁXIMO 163 caracteres (incluyendo espacios)
+                   - Usar tono amigable y promocional
+                   - Incluir beneficio claro
+                   - Llamado a la acción atractivo
+                   - NO usar el nombre del cliente si hace que supere los 163 caracteres
+                   
+                   Responde SOLO con un JSON válido en este formato:
+                   {
+                     "messages": [
+                       {"text": "mensaje 1", "chars": número},
+                       {"text": "mensaje 2", "chars": número},
+                       {"text": "mensaje 3", "chars": número}
+                     ],
+                     "tips": ["tip1", "tip2", "tip3"]
+                   }
+                   
+                   NO agregues texto adicional, SOLO el JSON.`
+            }]
+          })
+        });
+
+        const data = await response.json();
+        let messageData;
+        
+        try {
+          // Limpiar la respuesta de posibles markdown
+          let responseText = data.content[0].text;
+          responseText = responseText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+          messageData = JSON.parse(responseText);
+        } catch (parseError) {
+          console.error('Error parsing JSON:', parseError);
+          throw new Error('Error al procesar la respuesta de la IA');
+        }
+
+        // Mostrar resultados
+        loadingDiv.style.display = 'none';
+        contentDiv.style.display = 'block';
+        
+        let html = '<h3 style="color: #667eea; margin-bottom: 15px;">✨ Mensajes Generados</h3>';
+        
+        messageData.messages.forEach((msg, index) => {
+          const charClass = msg.chars <= 163 ? 'ok' : msg.chars <= 180 ? 'warning' : 'error';
+          html += `
+            <div class="message-preview">
+              <strong>Opción ${index + 1}:</strong><br>
+              ${msg.text}
+              <div class="char-counter ${charClass}">
+                ${msg.chars}/163 caracteres ${msg.chars > 163 ? '⚠️ Excede límite' : '✓'}
+              </div>
+            </div>
+          `;
+        });
+
+        if (messageData.tips && messageData.tips.length > 0) {
+          html += '<div class="suggestions"><div class="suggestion-title">💡 Consejos de la IA:</div>';
+          messageData.tips.forEach(tip => {
+            html += `<div class="suggestion-item">${tip}</div>`;
+          });
+          html += '</div>';
+        }
+
+        contentDiv.innerHTML = html;
+
+      } catch (error) {
+        console.error('Error:', error);
+        loadingDiv.style.display = 'none';
+        contentDiv.style.display = 'block';
+        contentDiv.innerHTML = `
+          <div style="color: #ef4444; padding: 20px; text-align: center;">
+            <h3>❌ Error al generar mensajes</h3>
+            <p>${error.message}</p>
+            <p style="font-size: 0.9em; margin-top: 10px;">Por favor intenta nuevamente</p>
+          </div>
+        `;
+      }
+    }
+
+    // INICIALIZAR
+    window.addEventListener('DOMContentLoaded', () => {
+      if (!currentUser.username) {
+        alert('Debes iniciar sesión');
+        window.location.href = '/';
+        return;
+      }
+      
+      loadStats();
+      loadCallsTable();
+    });
+  </script>
+</body>
+</html>
