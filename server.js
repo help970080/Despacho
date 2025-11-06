@@ -735,8 +735,14 @@ app.post('/api/call-status', async (req, res) => {
     
     console.log(`Llamada ${CallSid} a ${To}: ${CallStatus} (${CallDuration || 0}s) - Usuario: ${username}`);
     
-    // Registrar en historial
+    if (!username) {
+      console.error('Username no proporcionado en webhook');
+      return res.sendStatus(200);
+    }
+    
     const duration = parseInt(CallDuration) || 0;
+    
+    // Registrar en historial
     await logCallHistory({
       username: username,
       clientName: 'Desconocido',
@@ -751,13 +757,6 @@ app.post('/api/call-status', async (req, res) => {
       cost: 2,
       provider: 'twilio'
     });
-    
-    if (!username) {
-      console.error('Username no proporcionado en webhook');
-      return res.sendStatus(200);
-    }
-    
-    const duration = parseInt(CallDuration) || 0;
     
     if (CallStatus === 'completed') {
       await Stats.updateOne(
@@ -815,6 +814,11 @@ app.post('/api/sms-status', async (req, res) => {
     
     console.log(`SMS ${MessageSid} a ${To}: ${MessageStatus} - Usuario: ${username}${ErrorCode ? ` (Error: ${ErrorCode})` : ''}`);
     
+    if (!username) {
+      console.error('Username no proporcionado en webhook');
+      return res.sendStatus(200);
+    }
+    
     // Registrar en historial
     await logCallHistory({
       username: username,
@@ -827,11 +831,6 @@ app.post('/api/sms-status', async (req, res) => {
       cost: 1,
       provider: 'twilio'
     });
-    
-    if (!username) {
-      console.error('Username no proporcionado en webhook');
-      return res.sendStatus(200);
-    }
     
     if (MessageStatus === 'delivered') {
       await Stats.updateOne(
