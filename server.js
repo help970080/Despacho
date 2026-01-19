@@ -1,5 +1,5 @@
 // ================================
-// SERVIDOR DE COBRANZA + WHATSAPP MASIVO (CORREGIDO PARA RENDER)
+// SERVIDOR DE COBRANZA + WHATSAPP MASIVO (CORREGIDO)
 // Compatible con Render
 // ================================
 
@@ -13,9 +13,6 @@ const bcrypt = require('bcryptjs');
 const axios = require('axios');
 const qrcode = require('qrcode');
 const twilio = require('twilio');
-
-// IMPORTANTE: Deshabilitamos WhatsApp-Web.js en Render porque no funciona con Puppeteer
-// const { Client: WhatsAppClient, LocalAuth } = require('whatsapp-web.js');
 
 // ================================
 // CONFIGURACIÓN DE ENTORNO
@@ -32,17 +29,21 @@ app.use(express.json());
 const PORT = process.env.PORT || 10000;
 
 // ================================
-// MONGODB (CON RECONEXIÓN)
+// MONGODB CONEXIÓN MEJORADA
 // ================================
-const MONGODB_URI = process.env.MONGODB_URI || process.env.MONGO_URI;
+const MONGODB_URI = process.env.MONGODB_URI;
 
 if (!MONGODB_URI) {
   console.warn('⚠️  ADVERTENCIA: MONGODB_URI no está definida. Usando base de datos en memoria.');
 } else {
-  mongoose.connect(MONGODB_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-    serverSelectionTimeoutMS: 5000,
+  // Extraer nombre de base de datos si no está en la URI
+  let connectionString = MONGODB_URI;
+  if (!MONGODB_URI.includes('/?') && !MONGODB_URI.match(/\/[^/?]+(\?|$)/)) {
+    connectionString = MONGODB_URI.replace(/\?/, '/cobranza?');
+  }
+  
+  mongoose.connect(connectionString, {
+    serverSelectionTimeoutMS: 10000,
     socketTimeoutMS: 45000,
   })
   .then(() => console.log('💾 MongoDB conectado exitosamente'))
@@ -53,20 +54,20 @@ if (!MONGODB_URI) {
 }
 
 // ================================
-// SCHEMAS / MODELOS (CON FALLBACK EN MEMORIA)
+// SCHEMAS / MODELOS
 // ================================
 
 const userSchema = new mongoose.Schema({
-  username: String,
-  password: String,
-  credits: { type: Number, default: 0 }
+  username: { type: String, unique: true, required: true },
+  password: { type: String, required: true },
+  credits: { type: Number, default: 100 }
 });
 
 const clientSchema = new mongoose.Schema({
   name: String,
   phone: String,
   debt: Number,
-  status: String
+  status: { type: String, default: 'pending' }
 });
 
 const campaignSchema = new mongoose.Schema({
@@ -78,6 +79,11 @@ const campaignSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now }
 });
 
+// Modelos
+const User = mongoose.models.User || mongoose.model('User', userSchema);
+const Client = mongoose.models.Client || mongoose.model('Client', clientSchema);
+const Campaign = mongoose.models.Campaign || mongoose.model('Campaign', campaignSchema);
+
 // Colección en memoria como fallback
 const memoryDB = {
   users: [],
@@ -85,35 +91,54 @@ const memoryDB = {
   campaigns: []
 };
 
-const User = mongoose.models.User || mongoose.model('User', userSchema);
-const Client = mongoose.models.Client || mongoose.model('Client', clientSchema);
-const Campaign = mongoose.models.Campaign || mongoose.model('Campaign', campaignSchema);
-
-// Helper para usar DB real o memoria
+// Helper para usar DB real o memoria - CORREGIDO
 const db = {
   async findUser(query) {
-    if (mongoose.connection.readyState === 1) {
-      return await User.findOne(query);
+    try {
+      if (mongoose.connection.readyState === 1) {
+        return await User.findOne(query);
+      }
+      return memoryDB.users.find(u => u.username === query.username);
+    } catch (error) {
+      console.error('Error en findUser:', error);
+      return null;
     }
-    return memoryDB.users.find(u => u.username === query.username);
   },
   
-  async saveUser(user) {
-    if (mongoose.connection.readyState === 1) {
-      return await user.save();
+  async saveUser(userData) {
+    try {
+      if (mongoose.connection.readyState === 1) {
+        // Buscar usuario existente
+        let user = await User.findOne({ username: userData.username });
+        
+        if (user) {
+          // Actualizar usuario existente
+          if (userData.password) user.password = userData.password;
+          if (userData.credits !== undefined) user.credits = userData.credits;
+          return await user.save();
+        } else {
+          // Crear nuevo usuario
+          return await User.create(userData);
+        }
+      } else {
+        // Modo memoria
+        const index = memoryDB.users.findIndex(u => u.username === userData.username);
+        if (index >= 0) {
+          memoryDB.users[index] = userData;
+        } else {
+          memoryDB.users.push(userData);
+        }
+        return userData;
+      }
+    } catch (error) {
+      console.error('Error en saveUser:', error);
+      throw error;
     }
-    const index = memoryDB.users.findIndex(u => u.username === user.username);
-    if (index >= 0) {
-      memoryDB.users[index] = user;
-    } else {
-      memoryDB.users.push(user);
-    }
-    return user;
   }
 };
 
 // ================================
-// TWILIO (PARA WHATSAPP BUSINESS API)
+// TWILIO
 // ================================
 let twilioClient = null;
 if (process.env.TWILIO_SID && process.env.TWILIO_TOKEN) {
@@ -124,11 +149,6 @@ if (process.env.TWILIO_SID && process.env.TWILIO_TOKEN) {
 }
 
 // ================================
-// WHATSAPP - SOLO TWILIO API (NO WHATSAPP-WEB.JS)
-// ================================
-console.log('📱 Usando Twilio WhatsApp Business API (whatsapp-web.js deshabilitado en Render)');
-
-// ================================
 // ENDPOINTS PRINCIPALES
 // ================================
 
@@ -136,21 +156,48 @@ app.get('/', (req, res) => {
   res.json({
     status: '🚀 Sistema de Cobranza activo',
     environment: isRender ? 'Render' : 'Local',
-    features: {
-      whatsapp: 'Twilio Business API',
-      database: mongoose.connection.readyState === 1 ? 'MongoDB' : 'Memoria',
-      cron: 'Activo'
-    }
+    mongo: mongoose.connection.readyState === 1 ? 'Conectado' : 'Memoria',
+    whatsapp: twilioClient ? 'Twilio API' : 'Simulación',
+    url: process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`
   });
 });
 
 // Health check para Render
 app.get('/health', (req, res) => {
-  res.status(200).json({ 
-    status: 'healthy',
+  const mongoStatus = mongoose.connection.readyState;
+  res.status(mongoStatus === 1 ? 200 : 503).json({ 
+    status: mongoStatus === 1 ? 'healthy' : 'degraded',
     timestamp: new Date().toISOString(),
-    mongo: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected'
+    mongo: mongoStatus === 1 ? 'connected' : 'disconnected',
+    mongoState: mongoStatus
   });
+});
+
+// Status endpoint
+app.get('/status', async (req, res) => {
+  try {
+    const mongoStatus = mongoose.connection.readyState;
+    const adminUser = await db.findUser({ username: 'admin' });
+    
+    res.json({
+      server: 'active',
+      timestamp: new Date().toISOString(),
+      mongo: {
+        state: mongoStatus,
+        status: ['disconnected', 'connected', 'connecting', 'disconnecting'][mongoStatus] || 'unknown',
+        connected: mongoStatus === 1
+      },
+      admin: {
+        exists: !!adminUser,
+        credits: adminUser ? adminUser.credits : 0
+      },
+      environment: process.env.NODE_ENV || 'development',
+      render: isRender,
+      url: process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
 app.post('/login', async (req, res) => {
@@ -166,6 +213,15 @@ app.post('/login', async (req, res) => {
     // Usuario demo si no existe
     if (!user) {
       if (username === 'admin' && password === 'admin123') {
+        // Crear usuario admin automáticamente
+        const hashedPassword = await bcrypt.hash('admin123', 10);
+        const adminUser = {
+          username: 'admin',
+          password: hashedPassword,
+          credits: 100
+        };
+        await db.saveUser(adminUser);
+        
         return res.json({ 
           success: true, 
           user: { username: 'admin', credits: 100 },
@@ -175,18 +231,24 @@ app.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'Usuario no encontrado' });
     }
     
-    // Verificar contraseña (en producción usar bcrypt)
+    // Verificar contraseña
     const ok = user.password === password || await bcrypt.compare(password, user.password);
     if (!ok) return res.status(401).json({ error: 'Credenciales inválidas' });
     
-    res.json({ success: true, user: { username: user.username, credits: user.credits } });
+    res.json({ 
+      success: true, 
+      user: { 
+        username: user.username, 
+        credits: user.credits 
+      } 
+    });
   } catch (error) {
     console.error('Error en login:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 
-// Enviar WhatsApp usando Twilio API
+// Enviar WhatsApp usando Twilio API o simulación
 app.post('/send-whatsapp', async (req, res) => {
   const { phone, message, username } = req.body;
   
@@ -211,7 +273,7 @@ app.post('/send-whatsapp', async (req, res) => {
       return res.status(400).json({ error: 'Créditos insuficientes' });
     }
     
-    // OPCIÓN 1: Usar Twilio WhatsApp Business API (RECOMENDADO)
+    // OPCIÓN 1: Usar Twilio WhatsApp Business API
     if (twilioClient && process.env.TWILIO_WHATSAPP_NUMBER) {
       const formattedPhone = `whatsapp:+${cleanPhone}`;
       const fromNumber = `whatsapp:${process.env.TWILIO_WHATSAPP_NUMBER}`;
@@ -236,7 +298,7 @@ app.post('/send-whatsapp', async (req, res) => {
       });
     }
     
-    // OPCIÓN 2: Simular envío (para desarrollo/demo)
+    // OPCIÓN 2: Simular envío
     console.log(`📱 [SIMULACIÓN] WhatsApp a ${phone}: ${message.substring(0, 50)}...`);
     
     // Descontar crédito
@@ -274,7 +336,7 @@ app.get('/credits/:username', async (req, res) => {
     if (!user) {
       return res.status(404).json({ error: 'Usuario no encontrado' });
     }
-    res.json({ credits: user.credits });
+    res.json({ username: user.username, credits: user.credits });
   } catch (error) {
     res.status(500).json({ error: 'Error obteniendo créditos' });
   }
@@ -299,8 +361,12 @@ app.post('/clients', async (req, res) => {
   try {
     const { name, phone, debt } = req.body;
     
+    if (!name || !phone) {
+      return res.status(400).json({ error: 'Nombre y teléfono requeridos' });
+    }
+    
     if (mongoose.connection.readyState === 1) {
-      const client = new Client({ name, phone, debt, status: 'pending' });
+      const client = new Client({ name, phone, debt: debt || 0, status: 'pending' });
       await client.save();
       res.json(client);
     } else {
@@ -308,7 +374,7 @@ app.post('/clients', async (req, res) => {
         id: Date.now().toString(), 
         name, 
         phone, 
-        debt, 
+        debt: debt || 0, 
         status: 'pending' 
       };
       memoryDB.clients.push(newClient);
@@ -320,58 +386,41 @@ app.post('/clients', async (req, res) => {
 });
 
 // ================================
-// TAREAS PROGRAMADAS (CRON)
+// CREAR ADMIN AUTOMÁTICO
 // ================================
-if (!isRender) {
-  // En local, ejecutar cron normalmente
-  cron.schedule('0 * * * *', () => {
-    console.log('⏰ Tarea programada ejecutada:', new Date().toLocaleString());
-  });
-  console.log('⏰ Cron jobs activados (local)');
-} else {
-  // En Render, usar endpoints para tareas programadas
-  console.log('⏰ Cron jobs desactivados en Render (usar Scheduler de Render)');
-  
-  // Endpoint para ejecutar tareas manualmente
-  app.post('/run-cron', async (req, res) => {
-    const { secret } = req.body;
-    if (secret !== process.env.CRON_SECRET) {
-      return res.status(401).json({ error: 'No autorizado' });
+async function createDefaultAdmin() {
+  try {
+    console.log('🔍 Verificando usuario admin...');
+    const adminExists = await db.findUser({ username: 'admin' });
+    
+    if (!adminExists) {
+      console.log('👑 Creando usuario admin por defecto...');
+      const hashedPassword = await bcrypt.hash('admin123', 10);
+      
+      const adminUser = {
+        username: 'admin',
+        password: hashedPassword,
+        credits: 100
+      };
+      
+      await db.saveUser(adminUser);
+      console.log('✅ Usuario admin creado exitosamente');
+    } else {
+      console.log('✅ Usuario admin ya existe');
     }
-    
-    console.log('🔧 Ejecutando tarea programada manualmente');
-    // Aquí colocar la lógica de tus tareas programadas
-    // Ej: enviar recordatorios, actualizar estados, etc.
-    
-    res.json({ success: true, executedAt: new Date().toISOString() });
-  });
+  } catch (error) {
+    console.error('❌ Error creando admin:', error.message);
+  }
 }
 
-// ================================
-// CONFIGURACIÓN PARA RENDER
-// ================================
+// Esperar a que MongoDB esté listo
 if (isRender) {
-  // Crear usuario admin por defecto si no existe
-  const createDefaultAdmin = async () => {
-    try {
-      const adminExists = await db.findUser({ username: 'admin' });
-      if (!adminExists) {
-        const hashedPassword = await bcrypt.hash('admin123', 10);
-        const adminUser = {
-          username: 'admin',
-          password: hashedPassword,
-          credits: 100
-        };
-        await db.saveUser(adminUser);
-        console.log('👑 Usuario admin creado por defecto');
-      }
-    } catch (error) {
-      console.error('Error creando admin:', error);
+  const waitForMongo = setInterval(() => {
+    if (mongoose.connection.readyState === 1) {
+      clearInterval(waitForMongo);
+      setTimeout(createDefaultAdmin, 3000);
     }
-  };
-  
-  // Esperar a que la app esté lista
-  setTimeout(createDefaultAdmin, 3000);
+  }, 1000);
 }
 
 // ================================
