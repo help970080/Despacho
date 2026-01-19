@@ -16,6 +16,7 @@
     "https-proxy-agent": "^7.0.2",
     "mongoose": "^8.0.3",
     "node-cron": "^3.0.3",
+    "puppeteer": "^22.15.0",
     "qrcode": "^1.5.4",
     "twilio": "^4.19.0",
     "whatsapp-web.js": "^1.34.4"
@@ -26,15 +27,6 @@
   "engines": {
     "node": ">=18.0.0"
   },
-  "keywords": [
-    "cobranza",
-    "twilio",
-    "broadcaster",
-    "whatsapp",
-    "sms",
-    "llamadas",
-    "masivo"
-  ],
   "author": "CelExpress",
   "license": "MIT"
 }
