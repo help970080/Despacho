@@ -1,5 +1,5 @@
 // ================================
-// SERVIDOR DE COBRANZA + WHATSAPP
+// SERVIDOR DE COBRANZA + WHATSAPP MASIVO (CORREGIDO)
 // Compatible con Render
 // ================================
 
@@ -12,9 +12,15 @@ const cron = require('node-cron');
 const bcrypt = require('bcryptjs');
 const axios = require('axios');
 const qrcode = require('qrcode');
-const httpsProxyAgent = require('https-proxy-agent');
 const { Client: WhatsAppClient, LocalAuth } = require('whatsapp-web.js');
 const twilio = require('twilio');
+
+// ================================
+// VALIDACIONES DE ENTORNO
+// ================================
+if (!process.env.MONGO_URI) {
+  console.error('❌ MONGO_URI no está definida en las variables de entorno');
+}
 
 // ================================
 // APP
@@ -23,17 +29,17 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 10000;
 
 // ================================
-// MONGODB
+// MONGODB (CORREGIDO)
 // ================================
-mongoose.connect(process.env.MONGO_URI, {
+mongoose.connect(process.env.MONGO_URI || '', {
   useNewUrlParser: true,
   useUnifiedTopology: true
 })
 .then(() => console.log('💾 MongoDB conectado'))
-.catch(err => console.error('❌ MongoDB error:', err));
+.catch(err => console.error('❌ Error de MongoDB:', err));
 
 // ================================
 // SCHEMAS / MODELOS
@@ -68,14 +74,13 @@ const Campaign = mongoose.models.Campaign || mongoose.model('Campaign', campaign
 // ================================
 // TWILIO
 // ================================
-const twilioClient = twilio(
-  process.env.TWILIO_SID,
-  process.env.TWILIO_TOKEN
-);
+const twilioClient = process.env.TWILIO_SID && process.env.TWILIO_TOKEN
+  ? twilio(process.env.TWILIO_SID, process.env.TWILIO_TOKEN)
+  : null;
 console.log('📞 Twilio configurado');
 
 // ================================
-// WHATSAPP
+// WHATSAPP (CORREGIDO PARA RENDER)
 // ================================
 let whatsappClient;
 
@@ -111,6 +116,10 @@ function initWhatsApp() {
 
   whatsappClient.on('ready', () => {
     console.log('✅ WhatsApp listo');
+  });
+
+  whatsappClient.on('auth_failure', () => {
+    console.log('⚠️ Fallo de autenticación WhatsApp, reintentando...');
   });
 
   whatsappClient.initialize();
@@ -156,7 +165,7 @@ app.post('/send-whatsapp', async (req, res) => {
 });
 
 // ================================
-// CRON (EJEMPLO)
+// CRON
 // ================================
 cron.schedule('0 * * * *', () => {
   console.log('⏰ Tarea programada ejecutada');
