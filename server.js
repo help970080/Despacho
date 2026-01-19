@@ -7,7 +7,8 @@ const path = require('path');
 const bcrypt = require('bcryptjs');
 const cron = require('node-cron');
 const { HttpsProxyAgent } = require('https-proxy-agent');
-const { Client, LocalAuth } = require('whatsapp-web.js');
+const { Client: WhatsAppClient, LocalAuth } = require('whatsapp-web.js');
+
 const qrcode = require('qrcode');
 require('dotenv').config();
 
@@ -32,7 +33,8 @@ let whatsappInfo = null;
 function initWhatsApp() {
   console.log('📱 Inicializando WhatsApp...');
   
-  whatsappClient = new Client({
+ whatsappClient = new WhatsAppClient({
+
     authStrategy: new LocalAuth({ dataPath: './whatsapp-session' }),
     puppeteer: {
       headless: true,
